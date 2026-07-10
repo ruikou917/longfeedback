@@ -1,0 +1,31 @@
+experiment:
+  name: e0
+  seed: 0
+  episodes: 512
+  horizon: 8
+  train_fraction: 0.8
+  output_dir: artifacts/e0
+
+world:
+  habit_decay: 0.90
+  fatigue_decay: 0.80
+  fatigue_response_penalty: 0.80
+  fatigue_utility_cost: 0.08
+  action_utility_cost: 0.04
+  proxy_threshold: 1.73
+  behavior_epsilon: 0.25
+
+oracle:
+  continuation_mode: frozen
+  mc_rollouts: 16
+  max_examples: 4096
+  reference_action: 0
+
+baselines:
+  ridge_alpha: 1.0e-8
+
+report:
+  metrics_filename: metrics.json
+  predictions_filename: predictions.csv
+  plot_filename: outcome_vs_credit.png
+  manifest_filename: run_manifest.json

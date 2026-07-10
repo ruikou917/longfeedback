@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    # Torch-free path: schema, worlds, oracle, baselines, and the E0 slice.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.11
+      - run: uv sync --group dev --no-editable
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync pytest
+      - run: uv run --no-sync longfeedback experiment run e0 --output-dir /tmp/longfeedback-e0
+
+  research:
+    # Full path with the research extra: typing, torch tests, Gate A wiring.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.11
+      - run: uv sync --group dev --extra research --no-editable
+      - run: uv run --no-sync mypy
+      - run: uv run --no-sync pytest
+      - run: >-
+          uv run --no-sync longfeedback experiment run gate_a
+          --config configs/experiments/gate_a_smoke.yaml
+          --output-dir /tmp/longfeedback-gate-a-smoke

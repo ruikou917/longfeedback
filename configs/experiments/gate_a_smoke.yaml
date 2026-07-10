@@ -1,0 +1,45 @@
+# Tiny wiring smoke for CI: exercises every Gate A component quickly.
+# Its gate decision is NOT scientifically meaningful at this scale.
+experiment:
+  name: gate_a
+  seed: 0
+  train_fraction: 0.75
+  output_dir: artifacts/gate_a_smoke
+
+world_a:
+  episodes: 32
+  horizon: 6
+  observabilities: [partial]
+
+world_b:
+  episodes: 32
+  horizon: 6
+  regimes: [clean]
+  proxy_threshold: 3.0
+
+oracle:
+  initial_rollouts: 4
+  max_rollouts: 8
+  se_threshold: 0.5
+  label_train_episodes: 12
+  stability_examples: 16
+
+model:
+  d_model: 16
+  n_layers: 1
+  n_heads: 2
+
+training:
+  epochs: 4
+  batch_size: 32
+
+policy_check:
+  regime: world_a_partial
+  evaluation_episodes: 16
+  bc_epochs: 30
+
+decision:
+  outcome_auroc_tolerance: 1.0
+  credit_spearman_gap: 1.0e-6
+  stability_pearson_threshold: 1.0e-6
+  policy_utility_margin: 0.0

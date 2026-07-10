@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+.venv/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Local data and generated artifacts.
+# The whole data/ tree stays untracked: source datasets (e.g. gated
+# LMSYS-Chat-1M) must never be redistributed through this repository.
+data/
+artifacts/**
+!artifacts/.gitkeep
+reports/generated/
+*.parquet
+*.arrow
+
+# Experiment services and credentials
+.env
+wandb/
+mlruns/

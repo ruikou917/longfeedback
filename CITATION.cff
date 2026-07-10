@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use LongFeedback, please cite this software."
+title: "LongFeedback: Learning from Delayed, Implicit Behavioral Outcomes"
+type: software
+version: 0.1.0
+date-released: 2026-07-09
+authors:
+  - name: "LongFeedback Contributors"
+license: Apache-2.0

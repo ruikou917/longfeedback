@@ -1,0 +1,71 @@
+experiment:
+  name: gate_a
+  seed: 0
+  train_fraction: 0.8
+  output_dir: artifacts/gate_a
+
+world_a:
+  episodes: 384
+  horizon: 12
+  observabilities: [oracle, partial]
+  response_noise_std: 0.6
+  habit_noise_std: 0.05
+  fatigue_noise_std: 0.05
+  observation_noise_std: 0.1
+  proxy_threshold: 2.1
+  behavior_epsilon: 0.3
+  response_seek_threshold: 0.55
+
+world_b:
+  episodes: 384
+  horizon: 12
+  regimes: [clean, confounded]
+  stay_probability: 0.85
+  match_logit: 1.2
+  mismatch_logit: -1.8
+  progress_shock_scale: 1.0
+  proxy_threshold: 6.5
+  signal_accuracy: 0.85
+  clean_epsilon: 0.3
+  privileged_epsilon: 0.15
+
+oracle:
+  continuation_mode: frozen
+  reference_action: 0
+  initial_rollouts: 16
+  max_rollouts: 64
+  se_threshold: 0.15
+  label_train_episodes: 160
+  stability_examples: 96
+  stability_seed_offset: 100003
+
+model:
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.0
+
+training:
+  epochs: 40
+  batch_size: 128
+  learning_rate: 1.0e-3
+  weight_decay: 0.01
+  grad_clip: 1.0
+
+policy_check:
+  regime: world_a_oracle
+  evaluation_episodes: 256
+  bc_epochs: 120
+  bc_learning_rate: 0.05
+
+decision:
+  outcome_auroc_tolerance: 0.05
+  credit_spearman_gap: 0.15
+  stability_pearson_threshold: 0.95
+  policy_utility_margin: 0.0
+
+report:
+  metrics_filename: metrics.json
+  predictions_filename: predictions.csv
+  plot_filename: outcome_vs_credit.png
+  manifest_filename: run_manifest.json
