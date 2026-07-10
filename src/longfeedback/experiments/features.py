@@ -7,7 +7,16 @@ from collections.abc import Sequence
 import numpy as np
 import numpy.typing as npt
 
-from longfeedback.worlds import FatigueHabitObservation, HiddenIntentObservation
+from longfeedback.worlds import (
+    DelayedConversionObservation,
+    DelayedConversionWorld,
+    FatigueHabitObservation,
+    FatigueHabitWorld,
+    HiddenIntentObservation,
+    HiddenIntentWorld,
+    ProxyUtilityObservation,
+    ProxyUtilityWorld,
+)
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -45,6 +54,60 @@ def world_b_observation_features(
         observation.last_response,
         observation.cumulative_progress / horizon,
     ]
+
+
+def world_c_observation_features(
+    observation: DelayedConversionObservation, *, horizon: int, n_actions: int
+) -> list[float]:
+    """Released World C features; pending impulses must never appear."""
+
+    last_action_onehot = [0.0] * n_actions
+    if observation.last_action is not None:
+        last_action_onehot[observation.last_action] = 1.0
+    return [
+        observation.step_index / max(horizon - 1, 1),
+        1.0 if observation.converted else 0.0,
+        observation.sends / horizon,
+        1.0 if observation.last_action is not None else 0.0,
+        *last_action_onehot,
+        min(observation.steps_since_send, horizon) / horizon,
+    ]
+
+
+def world_d_observation_features(
+    observation: ProxyUtilityObservation, *, horizon: int, n_actions: int
+) -> list[float]:
+    """Released World D features; trust and dependency must never appear."""
+
+    last_action_onehot = [0.0] * n_actions
+    if observation.last_action is not None:
+        last_action_onehot[observation.last_action] = 1.0
+    return [
+        observation.step_index / max(horizon - 1, 1),
+        observation.engagement,
+        observation.noisy_progress / horizon,
+        1.0 if observation.last_action is not None else 0.0,
+        *last_action_onehot,
+    ]
+
+
+def observation_features_for(world: object, observation: object, *, horizon: int) -> list[float]:
+    """Dispatch the released-feature builder for any structural world."""
+
+    if isinstance(world, FatigueHabitWorld):
+        assert isinstance(observation, FatigueHabitObservation)
+        return world_a_observation_features(observation, horizon=horizon)
+    n_actions = len(world.action_space)  # type: ignore[attr-defined]
+    if isinstance(world, HiddenIntentWorld):
+        assert isinstance(observation, HiddenIntentObservation)
+        return world_b_observation_features(observation, horizon=horizon, n_actions=n_actions)
+    if isinstance(world, DelayedConversionWorld):
+        assert isinstance(observation, DelayedConversionObservation)
+        return world_c_observation_features(observation, horizon=horizon, n_actions=n_actions)
+    if isinstance(world, ProxyUtilityWorld):
+        assert isinstance(observation, ProxyUtilityObservation)
+        return world_d_observation_features(observation, horizon=horizon, n_actions=n_actions)
+    raise TypeError(f"no released-feature builder for world type {type(world).__name__}")
 
 
 def action_sequence_features(

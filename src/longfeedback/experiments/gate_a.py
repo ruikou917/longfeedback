@@ -23,7 +23,13 @@ import numpy.typing as npt
 import torch
 from torch import nn
 
-from longfeedback.config import GateAConfig, dump_resolved_config
+from longfeedback.config import (
+    GateAConfig,
+    GateAModelSettings,
+    GateAOracleSettings,
+    GateATrainingSettings,
+    dump_resolved_config,
+)
 from longfeedback.credit.metrics import (
     credit_recovery_summary,
     spearman_by_temporal_distance,
@@ -43,8 +49,7 @@ from longfeedback.evaluation import (
 )
 from longfeedback.experiments.features import (
     deterministic_split,
-    world_a_observation_features,
-    world_b_observation_features,
+    observation_features_for,
 )
 from longfeedback.experiments.manifest import build_run_manifest, sha256_json
 from longfeedback.experiments.types import ExperimentResult
@@ -144,14 +149,10 @@ class RegimeData:
         return len(self.world.action_space)
 
     def observation_features(self, observation: Any) -> list[float]:
-        if isinstance(self.world, FatigueHabitWorld):
-            return world_a_observation_features(observation, horizon=self.horizon)
-        return world_b_observation_features(
-            observation, horizon=self.horizon, n_actions=self.n_actions
-        )
+        return observation_features_for(self.world, observation, horizon=self.horizon)
 
 
-def _rollout_regime(
+def rollout_regime(
     *,
     name: str,
     world: Any,
@@ -178,14 +179,9 @@ def _rollout_regime(
         )
         feature_rows.append([])
         for transition in episode.transitions:
-            observation = transition.observation
-            if isinstance(world, FatigueHabitWorld):
-                features = world_a_observation_features(observation, horizon=horizon)
-            else:
-                features = world_b_observation_features(
-                    observation, horizon=horizon, n_actions=len(world.action_space)
-                )
-            feature_rows[-1].append(features)
+            feature_rows[-1].append(
+                observation_features_for(world, transition.observation, horizon=horizon)
+            )
 
     return RegimeData(
         name=name,
@@ -224,7 +220,7 @@ def generate_regimes(config: GateAConfig) -> dict[str, RegimeData]:
             )
         )
         name = f"world_a_{observability}"
-        regimes[name] = _rollout_regime(
+        regimes[name] = rollout_regime(
             name=name,
             world=world,
             policy=ResponseSeekingPolicy(
@@ -257,7 +253,7 @@ def generate_regimes(config: GateAConfig) -> dict[str, RegimeData]:
         else:
             policy = RepeatSuccessPolicy(settings_b.clean_epsilon)
         name = f"world_b_{regime}"
-        regimes[name] = _rollout_regime(
+        regimes[name] = rollout_regime(
             name=name,
             world=world_b,
             policy=policy,
@@ -275,12 +271,11 @@ def _adaptive_oracle_estimate(
     *,
     episode_index: int,
     step_index: int,
-    config: GateAConfig,
+    oracle: GateAOracleSettings,
     seed_shift: int = 0,
 ) -> tuple[OracleCreditEstimate[Any], int]:
     """Escalate paired rollouts until the Monte Carlo SE meets the threshold."""
 
-    oracle = config.oracle
     episode = regime.episodes[episode_index]
     action = episode.transitions[step_index].action
     reference_action = regime.world.action_space[oracle.reference_action]
@@ -321,7 +316,7 @@ class OracleLabels:
 def label_oracle_credit(
     regime: RegimeData,
     episode_indices: IntArray,
-    config: GateAConfig,
+    oracle: GateAOracleSettings,
 ) -> OracleLabels:
     """Attach adaptive paired-CRN utility-credit labels to selected episodes."""
 
@@ -337,7 +332,7 @@ def label_oracle_credit(
                 regime,
                 episode_index=int(episode_index),
                 step_index=step_index,
-                config=config,
+                oracle=oracle,
             )
             targets[episode_index, step_index] = estimate.credit_utility
             standard_errors[episode_index, step_index] = estimate.monte_carlo_se
@@ -357,14 +352,14 @@ def label_oracle_credit(
 def oracle_stability_pearson(
     regime: RegimeData,
     labels: OracleLabels,
-    config: GateAConfig,
+    oracle: GateAOracleSettings,
 ) -> float:
     """Re-estimate a labeled subsample under a shifted seed and correlate."""
 
     labeled_positions = np.argwhere(labels.mask)
     if labeled_positions.shape[0] == 0:
         raise ValueError("stability check requires labeled oracle examples")
-    subset = labeled_positions[: config.oracle.stability_examples]
+    subset = labeled_positions[: oracle.stability_examples]
     first: list[float] = []
     second: list[float] = []
     for episode_index, step_index in subset:
@@ -373,8 +368,8 @@ def oracle_stability_pearson(
             regime,
             episode_index=int(episode_index),
             step_index=int(step_index),
-            config=config,
-            seed_shift=config.oracle.stability_seed_offset,
+            oracle=oracle,
+            seed_shift=oracle.stability_seed_offset,
         )
         second.append(estimate.credit_utility)
     return pearson_correlation(np.asarray(first), np.asarray(second))
@@ -424,20 +419,24 @@ def train_and_evaluate_variants(
     labels: OracleLabels,
     train_indices: IntArray,
     test_indices: IntArray,
-    config: GateAConfig,
+    *,
+    model_settings: GateAModelSettings,
+    training_settings: GateATrainingSettings,
+    reference_action: int,
+    seed: int,
 ) -> dict[str, VariantEvaluation]:
     architecture = EncoderArchitecture(
-        d_model=config.model.d_model,
-        n_layers=config.model.n_layers,
-        n_heads=config.model.n_heads,
-        dropout=config.model.dropout,
+        d_model=model_settings.d_model,
+        n_layers=model_settings.n_layers,
+        n_heads=model_settings.n_heads,
+        dropout=model_settings.dropout,
     )
     training = TrainingSettings(
-        epochs=config.training.epochs,
-        batch_size=config.training.batch_size,
-        learning_rate=config.training.learning_rate,
-        weight_decay=config.training.weight_decay,
-        grad_clip=config.training.grad_clip,
+        epochs=training_settings.epochs,
+        batch_size=training_settings.batch_size,
+        learning_rate=training_settings.learning_rate,
+        weight_decay=training_settings.weight_decay,
+        grad_clip=training_settings.grad_clip,
     )
     train_dataset = _sequence_dataset(regime, train_indices, labels)
     test_dataset = _sequence_dataset(regime, test_indices)
@@ -451,10 +450,10 @@ def train_and_evaluate_variants(
             observation_dim=int(regime.observations.shape[-1]),
             n_actions=regime.n_actions,
             horizon=regime.horizon,
-            reference_action=config.oracle.reference_action,
+            reference_action=reference_action,
             architecture=architecture,
             loss_weights=variant_loss_weights(name),
-            seed=config.experiment.seed,
+            seed=seed,
         )
         fit_summary = model.fit(train_dataset, training=training)
         outcome_predictions = model.predict_outcome_probability(test_dataset)
@@ -782,11 +781,18 @@ def run_gate_a(config: GateAConfig, *, output_dir: Path | None = None) -> Experi
         test_indices[name] = test_idx
         labeled_train = train_idx[: config.oracle.label_train_episodes]
         labeled_episodes = np.concatenate((labeled_train, test_idx))
-        regime_labels = label_oracle_credit(regime, labeled_episodes, config)
+        regime_labels = label_oracle_credit(regime, labeled_episodes, config.oracle)
         labels[name] = regime_labels
-        stability[name] = oracle_stability_pearson(regime, regime_labels, config)
+        stability[name] = oracle_stability_pearson(regime, regime_labels, config.oracle)
         evaluations[name] = train_and_evaluate_variants(
-            regime, regime_labels, train_idx, test_idx, config
+            regime,
+            regime_labels,
+            train_idx,
+            test_idx,
+            model_settings=config.model,
+            training_settings=config.training,
+            reference_action=config.oracle.reference_action,
+            seed=config.experiment.seed,
         )
         data_summary[name] = {
             "episodes": len(regime.episodes),

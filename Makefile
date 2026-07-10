@@ -1,4 +1,4 @@
-.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 gate-a gate-a-smoke
+.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 gate-a gate-a-smoke gate-b data-lmsys
 
 # Full research environment (torch included); required for gate-a and mypy.
 bootstrap:
@@ -31,3 +31,12 @@ gate-a:
 
 gate-a-smoke:
 	uv run --no-sync longfeedback experiment run gate_a --config configs/experiments/gate_a_smoke.yaml
+
+data-lmsys:
+	uv run --no-sync longfeedback data prepare lmsys --config configs/data/lmsys.yaml
+
+e1:
+	uv run --no-sync longfeedback experiment run e1 --config configs/experiments/e1.yaml
+
+gate-b:
+	uv run --no-sync longfeedback experiment run gate_b --config configs/experiments/gate_b.yaml

@@ -18,9 +18,10 @@ htmlcov/
 .vscode/
 
 # Local data and generated artifacts.
-# The whole data/ tree stays untracked: source datasets (e.g. gated
-# LMSYS-Chat-1M) must never be redistributed through this repository.
-data/
+# The whole top-level data/ tree stays untracked: source datasets (e.g. gated
+# LMSYS-Chat-1M) must never be redistributed through this repository. The
+# leading slash keeps src/longfeedback/data (the adapter package) tracked.
+/data/
 artifacts/**
 !artifacts/.gitkeep
 reports/generated/

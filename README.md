@@ -5,11 +5,13 @@ arrive after many decisions. It keeps four quantities separate: an observed
 behavioral proxy, true utility in controlled worlds, predictive contribution,
 and interventional action credit.
 
-The repository is currently at **v0.1 / Gate A**: the deterministic E0 vertical
-slice plus the first scientific experiment. Gate A trains capacity-matched
-sequence models on two stochastic structural worlds and demonstrates the
-project's central claim: terminal-outcome prediction accuracy does not imply
-per-step credit recovery.
+The repository has completed the **v0.2 research milestone**: four structural
+world families with oracle counterfactual credit, capacity-matched DOCM
+variants, bootstrap-ensemble uncertainty evaluated under distribution shift,
+a real-log delayed-outcome replication, and an auto-generated paper-style
+report ([reports/v0_2_report.md](reports/v0_2_report.md)). The central result:
+models that predict the terminal outcome equally well differ drastically in
+recovering true per-step interventional credit, in every family tested.
 
 ## What E0 establishes
 
@@ -41,9 +43,15 @@ observational chat logs, or provide production delayed-RL infrastructure.
 ```bash
 make bootstrap
 make test
-make e0       # deterministic pipeline sanity (CPU, seconds)
-make gate-a   # Gate A experiment (CPU, about a minute)
+make e0         # deterministic pipeline sanity (CPU, seconds)
+make gate-a     # Gate A experiment (CPU, about a minute)
+make gate-b     # Gate B: four families, ensembles, distribution shift
+make data-lmsys # optional: prepare a local LMSYS-Chat-1M snapshot
+make e1         # real-log delayed-outcome prediction (needs data-lmsys)
 ```
+
+Regenerate the paper-style report from the artifacts with
+`uv run --no-sync longfeedback report build`.
 
 `make bootstrap` installs an immutable local wheel (with the `research` extra,
 including a CPU PyTorch) so the same package boundary is tested in development
@@ -73,6 +81,7 @@ make qa
 configs/                 Versioned experiment configuration
 docs/                    Scientific contracts, assumptions, and decisions
 src/longfeedback/schema  Canonical serialized records
+src/longfeedback/data    Source dataset adapters (conversations -> trajectories)
 src/longfeedback/worlds  Controlled structural environments
 src/longfeedback/credit  Counterfactual and redistributed credit
 src/longfeedback/models  DOCM sequence models (research extra, torch)
@@ -86,7 +95,7 @@ tests/                   Unit, property, integration, and reproducibility tests
 
 1. E0 deterministic pipeline sanity. (done)
 2. Stochastic Worlds A/B, RUDDER, and DOCM MVP (Gate A). (done)
-3. Real-log predictive outcomes plus Worlds C/D and uncertainty (Gate B).
+3. Real-log predictive outcomes plus Worlds C/D and uncertainty (Gate B). (done)
 4. Policy improvement, reward overoptimization, and LLM reranking.
 5. Delayed-reward infrastructure extraction only after repeated abstractions
    justify Gate C.
@@ -96,10 +105,13 @@ See [the scientific contract](docs/scientific_contract.md) and
 
 ## Data and safety
 
-No public interaction dataset is downloaded by E0. Future adapters must pin exact
-dataset IDs, revisions, checksums, and licenses; sanitize locally before any external
-labeling; and publish manifests or sanitized fixtures instead of raw conversation
-text. Behavioral engagement is a proxy, not user welfare.
+No public interaction dataset is required by E0 or Gate A. The optional LMSYS
+adapter operates on a locally downloaded, gated snapshot: it pins the dataset
+revision and shard checksums, drops moderation-flagged conversations, applies a
+versioned local PII pass, and keeps raw and processed text inside the gitignored
+`data/` tree because the dataset license prohibits redistribution. See
+[data governance](docs/data_governance.md). Behavioral engagement is a proxy,
+not user welfare.
 
 ## License
 

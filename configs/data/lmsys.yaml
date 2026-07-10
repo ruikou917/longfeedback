@@ -1,0 +1,17 @@
+# Preparation settings for a local, gated LMSYS-Chat-1M snapshot.
+# Raw and processed data stay under the gitignored data/ tree; the dataset
+# license prohibits redistribution.
+input_dir: data/lmsys-chat-data
+output_dir: data/processed/lmsys
+max_conversations: 20000
+language: English
+min_assistant_turns: 3
+max_message_chars: 8000
+exclude_flagged: true
+include_redacted: true
+seed: 0
+train_fraction: 0.8
+validation_fraction: 0.1
+events_filename: events.parquet
+manifest_filename: source_manifest.json
+stats_filename: stats.json

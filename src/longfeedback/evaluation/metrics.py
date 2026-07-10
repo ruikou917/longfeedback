@@ -129,6 +129,58 @@ def expected_calibration_error(
     return error
 
 
+def average_precision(labels: ArrayLike, scores: ArrayLike) -> float:
+    """Area under the precision-recall curve (AP); base rate when degenerate."""
+
+    label_array = _binary_labels(labels)
+    _, score_array = _paired(label_array, scores)
+    positives = float(np.sum(label_array))
+    if positives == 0.0:
+        return 0.0
+    if positives == float(label_array.size):
+        return 1.0
+    order = np.argsort(-score_array, kind="mergesort")
+    sorted_labels = label_array[order]
+    cumulative_positives = np.cumsum(sorted_labels)
+    precision = cumulative_positives / np.arange(1, label_array.size + 1)
+    return float(np.sum(precision * sorted_labels) / positives)
+
+
+def negative_log_likelihood(
+    labels: ArrayLike,
+    probabilities: ArrayLike,
+    *,
+    epsilon: float = 1.0e-7,
+) -> float:
+    label_array = _binary_labels(labels)
+    _, probability_array = _paired(label_array, probabilities)
+    clipped = np.clip(probability_array, epsilon, 1.0 - epsilon)
+    return float(
+        -np.mean(label_array * np.log(clipped) + (1.0 - label_array) * np.log(1.0 - clipped))
+    )
+
+
+def error_detection_auroc(
+    absolute_errors: ArrayLike,
+    uncertainties: ArrayLike,
+    *,
+    error_quantile: float = 0.75,
+) -> float:
+    """AUROC for flagging high-error predictions from uncertainty alone.
+
+    A prediction is "high error" when its absolute error is at or above the
+    given quantile of the error distribution; uncertainty is the score.
+    Returns 0.5 when errors are too uniform to define both classes.
+    """
+
+    if not 0.0 < error_quantile < 1.0:
+        raise ValueError("error_quantile must lie in (0, 1)")
+    error_array, uncertainty_array = _paired(absolute_errors, uncertainties)
+    threshold = float(np.quantile(error_array, error_quantile))
+    labels = (error_array >= threshold).astype(np.float64)
+    return auroc(labels, uncertainty_array)
+
+
 def telescoping_residual(
     per_step_rewards: ArrayLike,
     start_values: ArrayLike,

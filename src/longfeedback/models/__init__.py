@@ -11,6 +11,7 @@ from longfeedback.models.docm import (
     TrainingSettings,
 )
 from longfeedback.models.encoders import CausalTransformerEncoder, EncoderArchitecture
+from longfeedback.models.ensemble import BootstrapEnsemble
 from longfeedback.models.outcome import (
     VARIANT_LOSS_WEIGHTS,
     redistributed_rewards,
@@ -19,6 +20,7 @@ from longfeedback.models.outcome import (
 
 __all__ = [
     "VARIANT_LOSS_WEIGHTS",
+    "BootstrapEnsemble",
     "CausalTransformerEncoder",
     "DelayedOutcomeCreditModel",
     "DocmLossWeights",

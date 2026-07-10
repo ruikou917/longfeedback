@@ -1,6 +1,16 @@
 """Controlled structural worlds for delayed-credit experiments."""
 
 from .base import Episode, Policy, StructuralWorld, Transition
+from .delayed_conversion import (
+    ConversionAction,
+    DelayedConversionConfig,
+    DelayedConversionExogenousNoise,
+    DelayedConversionObservation,
+    DelayedConversionState,
+    DelayedConversionStepNoise,
+    DelayedConversionWorld,
+    SpacedOutreachPolicy,
+)
 from .fatigue_habit import (
     FatigueAction,
     FatigueHabitConfig,
@@ -22,8 +32,25 @@ from .hidden_intent import (
     PrivilegedIntentPolicy,
     RepeatSuccessPolicy,
 )
+from .proxy_utility import (
+    InfluenceAction,
+    MixedInfluencePolicy,
+    ProxyUtilityConfig,
+    ProxyUtilityExogenousNoise,
+    ProxyUtilityObservation,
+    ProxyUtilityState,
+    ProxyUtilityStepNoise,
+    ProxyUtilityWorld,
+)
 
 __all__ = [
+    "ConversionAction",
+    "DelayedConversionConfig",
+    "DelayedConversionExogenousNoise",
+    "DelayedConversionObservation",
+    "DelayedConversionState",
+    "DelayedConversionStepNoise",
+    "DelayedConversionWorld",
     "Episode",
     "FatigueAction",
     "FatigueHabitConfig",
@@ -39,10 +66,19 @@ __all__ = [
     "HiddenIntentState",
     "HiddenIntentStepNoise",
     "HiddenIntentWorld",
+    "InfluenceAction",
     "IntentAction",
+    "MixedInfluencePolicy",
     "Policy",
     "PrivilegedIntentPolicy",
+    "ProxyUtilityConfig",
+    "ProxyUtilityExogenousNoise",
+    "ProxyUtilityObservation",
+    "ProxyUtilityState",
+    "ProxyUtilityStepNoise",
+    "ProxyUtilityWorld",
     "RepeatSuccessPolicy",
+    "SpacedOutreachPolicy",
     "StructuralWorld",
     "Transition",
 ]

@@ -61,3 +61,20 @@ statistical estimate.
   for the behavior policy, a behavior clone, and the Q-greedy policy; a proxy
   gain paired with a utility loss fails the gate.
 - Identical configurations and seeds produce identical scientific metrics.
+
+## Gate B acceptance contract
+
+- Capacity matching is asserted within each world family (observation
+  dimensions differ across families, so cross-family parameter counts do not).
+- Credit supervision must beat both the outcome-only and prefix variants on
+  held-out credit Spearman in at least three of the four structural families.
+- Ensemble uncertainty is the between-member standard deviation of a bootstrap
+  ensemble; under at least one distribution shift it must correlate with
+  absolute credit error and detect high-error predictions above chance.
+- Distribution shifts are declared per family (parameter shift or
+  logging-policy shift); cross-family transfer remains an open item and must
+  not be claimed.
+- The real-log criterion (E1) supports predictive claims only. Its labels are
+  deterministic rule proxies (versioned `rules-v1`), frozen before modeling,
+  computed from future user turns that never enter model inputs; trivial
+  length baselines are always reported alongside.

@@ -1,0 +1,49 @@
+experiment:
+  name: gate_b
+  seed: 0
+  train_fraction: 0.8
+  output_dir: artifacts/gate_b
+
+families:
+  episodes: 256
+  label_train_episodes: 96
+  shift_episodes: 128
+
+oracle:
+  continuation_mode: frozen
+  reference_action: 0
+  initial_rollouts: 16
+  max_rollouts: 64
+  se_threshold: 0.15
+  label_train_episodes: 96
+  stability_examples: 96
+  stability_seed_offset: 100003
+
+model:
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.0
+
+training:
+  epochs: 40
+  batch_size: 128
+  learning_rate: 1.0e-3
+  weight_decay: 0.01
+  grad_clip: 1.0
+
+ensemble_members: 5
+
+decision:
+  credit_spearman_margin: 0.02
+  min_winning_families: 3
+  uncertainty_spearman_threshold: 0.2
+  error_detection_auroc_threshold: 0.6
+  require_real_log: true
+  e1_metrics_path: artifacts/e1/metrics.json
+
+report:
+  metrics_filename: metrics.json
+  predictions_filename: predictions.csv
+  plot_filename: outcome_vs_credit.png
+  manifest_filename: run_manifest.json

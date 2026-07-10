@@ -13,7 +13,14 @@ from longfeedback.credit.metrics import (
     normalized_rmse,
     spearman_by_temporal_distance,
 )
-from longfeedback.evaluation import auroc, brier_score, expected_calibration_error
+from longfeedback.evaluation import (
+    auroc,
+    average_precision,
+    brier_score,
+    error_detection_auroc,
+    expected_calibration_error,
+    negative_log_likelihood,
+)
 
 
 def test_kendall_tau_hand_computed_cases() -> None:
@@ -77,6 +84,33 @@ def test_brier_and_ece_hand_computed() -> None:
         0.2,
         abs_tol=1.0e-12,
     )
+
+
+def test_average_precision_hand_computed() -> None:
+    # Ranked: pos, neg, pos -> AP = (1/1 + 2/3) / 2 = 5/6.
+    assert math.isclose(average_precision([1.0, 0.0, 1.0], [0.9, 0.8, 0.7]), 5.0 / 6.0)
+    assert average_precision([0.0, 0.0], [0.4, 0.6]) == 0.0
+    assert average_precision([1.0, 1.0], [0.4, 0.6]) == 1.0
+
+
+def test_negative_log_likelihood_hand_computed() -> None:
+    assert math.isclose(
+        negative_log_likelihood([1.0, 0.0], [0.5, 0.5]), math.log(2.0), rel_tol=1.0e-9
+    )
+    # Confident-correct beats uncertain; clipping keeps it finite.
+    assert negative_log_likelihood([1.0], [1.0]) < 1.0e-5
+    assert math.isfinite(negative_log_likelihood([1.0], [0.0]))
+
+
+def test_error_detection_auroc_flags_high_error_predictions() -> None:
+    errors = [0.0, 0.1, 0.2, 1.0, 1.1, 1.2, 1.3, 1.4]
+    aligned_uncertainty = [0.0, 0.1, 0.2, 1.0, 1.1, 1.2, 1.3, 1.4]
+    inverted_uncertainty = aligned_uncertainty[::-1]
+    assert error_detection_auroc(errors, aligned_uncertainty) == 1.0
+    assert error_detection_auroc(errors, inverted_uncertainty) == 0.0
+    assert error_detection_auroc(errors, [0.5] * 8) == 0.5
+    with pytest.raises(ValueError):
+        error_detection_auroc(errors, aligned_uncertainty, error_quantile=1.5)
 
 
 def test_metric_input_validation() -> None:

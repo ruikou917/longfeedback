@@ -237,6 +237,107 @@ class GateAConfig(StrictModel):
     report: GateAReportSettings = GateAReportSettings()
 
 
+class LmsysDataConfig(StrictModel):
+    """Configuration for preparing the local LMSYS-Chat-1M snapshot."""
+
+    input_dir: Path = Path("data/lmsys-chat-data")
+    output_dir: Path = Path("data/processed/lmsys")
+    max_conversations: int = Field(default=20_000, ge=0, description="0 keeps every row")
+    language: str | None = "English"
+    min_assistant_turns: int = Field(default=3, ge=1)
+    max_message_chars: int = Field(default=8_000, ge=1)
+    exclude_flagged: bool = True
+    include_redacted: bool = True
+    seed: int = 0
+    train_fraction: float = Field(default=0.8, gt=0.0, lt=1.0)
+    validation_fraction: float = Field(default=0.1, ge=0.0, lt=1.0)
+    events_filename: str = "events.parquet"
+    manifest_filename: str = "source_manifest.json"
+    stats_filename: str = "stats.json"
+
+    @model_validator(mode="after")
+    def fractions_leave_test_split(self) -> LmsysDataConfig:
+        if self.train_fraction + self.validation_fraction >= 1.0:
+            raise ValueError("train and validation fractions must leave room for test")
+        for value in (self.events_filename, self.manifest_filename, self.stats_filename):
+            path = Path(value)
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError("artifact filenames must stay inside the output directory")
+        return self
+
+
+class GateBExperimentSettings(StrictModel):
+    """Reproducibility settings for the Gate B experiment."""
+
+    name: Literal["gate_b"] = "gate_b"
+    seed: int = 0
+    train_fraction: float = Field(default=0.8, gt=0.5, lt=1.0)
+    output_dir: Path = Path("artifacts/gate_b")
+
+
+class GateBFamilySettings(StrictModel):
+    """Per-family dataset sizes; world parameters live in the experiment."""
+
+    episodes: int = Field(default=256, ge=16)
+    label_train_episodes: int = Field(default=96, ge=8)
+    shift_episodes: int = Field(default=128, ge=16)
+
+
+class GateBDecisionSettings(StrictModel):
+    """Thresholds for the four Gate B decision criteria."""
+
+    credit_spearman_margin: float = Field(default=0.02, ge=0.0)
+    min_winning_families: int = Field(default=3, ge=1, le=4)
+    uncertainty_spearman_threshold: float = Field(default=0.2, gt=0.0)
+    error_detection_auroc_threshold: float = Field(default=0.6, gt=0.5)
+    require_real_log: bool = True
+    e1_metrics_path: Path = Path("artifacts/e1/metrics.json")
+
+
+class GateBConfig(StrictModel):
+    """Complete configuration for the Gate B experiment."""
+
+    experiment: GateBExperimentSettings = GateBExperimentSettings()
+    families: GateBFamilySettings = GateBFamilySettings()
+    oracle: GateAOracleSettings = GateAOracleSettings()
+    model: GateAModelSettings = GateAModelSettings()
+    training: GateATrainingSettings = GateATrainingSettings()
+    ensemble_members: int = Field(default=5, ge=2)
+    decision: GateBDecisionSettings = GateBDecisionSettings()
+    report: GateAReportSettings = GateAReportSettings()
+
+
+class E1Config(StrictModel):
+    """Real-log delayed-outcome prediction on prepared conversation events."""
+
+    processed_dir: Path = Path("data/processed/lmsys")
+    events_filename: str = "events.parquet"
+    output_dir: Path = Path("artifacts/e1")
+    seed: int = 0
+    window: int = Field(default=4, ge=1, le=16)
+    repetition_threshold: float = Field(default=0.6, gt=0.0, le=1.0)
+    max_train_examples: int = Field(default=30_000, ge=100)
+    max_eval_examples: int = Field(default=10_000, ge=100)
+    ridge_alpha: float = Field(default=1.0, ge=0.0)
+    d_model: int = Field(default=32, ge=8)
+    n_layers: int = Field(default=1, ge=1)
+    n_heads: int = Field(default=2, ge=1)
+    epochs: int = Field(default=8, ge=1)
+    batch_size: int = Field(default=256, ge=1)
+    learning_rate: float = Field(default=1.0e-3, gt=0.0)
+    min_auroc: float = Field(default=0.55, gt=0.5, lt=1.0)
+    auroc_margin_over_trivial: float = Field(default=0.02, gt=0.0)
+    metrics_filename: str = "metrics.json"
+    predictions_filename: str = "predictions.csv"
+    manifest_filename: str = "run_manifest.json"
+
+    @model_validator(mode="after")
+    def validate_model_shape(self) -> E1Config:
+        if self.d_model % self.n_heads != 0:
+            raise ValueError("d_model must be divisible by n_heads")
+        return self
+
+
 def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         raw: Any = yaml.safe_load(handle)
@@ -259,7 +360,25 @@ def load_gate_a_config(path: Path) -> GateAConfig:
     return GateAConfig.model_validate(_load_yaml_mapping(path))
 
 
-def dump_resolved_config(config: E0Config | GateAConfig) -> dict[str, Any]:
+def load_lmsys_data_config(path: Path) -> LmsysDataConfig:
+    """Load and validate an LMSYS data-preparation YAML file."""
+
+    return LmsysDataConfig.model_validate(_load_yaml_mapping(path))
+
+
+def load_e1_config(path: Path) -> E1Config:
+    """Load and validate an E1 real-log YAML file."""
+
+    return E1Config.model_validate(_load_yaml_mapping(path))
+
+
+def load_gate_b_config(path: Path) -> GateBConfig:
+    """Load and validate a Gate B YAML file."""
+
+    return GateBConfig.model_validate(_load_yaml_mapping(path))
+
+
+def dump_resolved_config(config: StrictModel) -> dict[str, Any]:
     """Return a JSON-safe representation suitable for run manifests."""
 
     return config.model_dump(mode="json")

@@ -73,6 +73,9 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+# The report generator embeds markdown tables (long lines) and scientific
+# notation (Greek rho, minus sign) on purpose.
+"src/longfeedback/experiments/report.py" = ["E501", "RUF001"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -81,5 +84,5 @@ packages = ["longfeedback"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["matplotlib.*"]
+module = ["matplotlib.*", "pyarrow.*"]
 ignore_missing_imports = true
