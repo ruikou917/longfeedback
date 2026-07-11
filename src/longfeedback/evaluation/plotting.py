@@ -1,9 +1,10 @@
-"""Small non-interactive E0 plots."""
+"""Small non-interactive experiment plots."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -50,6 +51,56 @@ def plot_outcome_vs_credit(
     axes.set_title(title)
     axes.grid(alpha=0.25)
     axes.margins(x=0.18, y=0.12)
+
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=150, metadata={"Software": "LongFeedback"})
+    figure.clear()
+    return output
+
+
+def plot_optimization_curves(
+    curves_by_variant: Mapping[str, Mapping[str, Sequence[float]]],
+    budgets: Sequence[int],
+    path: str | Path,
+    *,
+    series_labels: Mapping[str, str],
+    title: str = "Reward overoptimization curves",
+) -> Path:
+    """One panel per reward variant; named series versus optimization budget."""
+
+    if not curves_by_variant:
+        raise ValueError("curves_by_variant must be non-empty")
+    budget_array = np.asarray(budgets, dtype=np.float64)
+
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    variants = list(curves_by_variant)
+    figure = Figure(figsize=(4.6 * len(variants), 3.8), constrained_layout=True)
+    FigureCanvasAgg(figure)
+    colors = {"learned_reward": "#35618f", "observed_proxy": "#c58a2c", "true_utility": "#3d8f5f"}
+    axes_list: Any = figure.subplots(1, len(variants), sharex=True)
+    if len(variants) == 1:
+        axes_list = [axes_list]
+    for axes, variant in zip(axes_list, variants, strict=True):
+        for series_name, label in series_labels.items():
+            values = np.asarray(curves_by_variant[variant][series_name], dtype=np.float64)
+            if values.shape != budget_array.shape:
+                raise ValueError(f"series {series_name!r} must align with budgets")
+            axes.plot(
+                budget_array,
+                values,
+                label=label,
+                color=colors.get(series_name),
+                linewidth=1.6,
+            )
+        axes.set_title(variant)
+        axes.set_xlabel("optimizer updates")
+        axes.grid(alpha=0.25)
+    axes_list[0].set_ylabel("value")
+    axes_list[0].legend(loc="best", fontsize=8)
+    figure.suptitle(title)
 
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)

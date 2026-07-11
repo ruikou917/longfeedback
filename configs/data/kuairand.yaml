@@ -1,0 +1,18 @@
+# Preparation settings for a local KuaiRand-Pure snapshot (E6, the
+# randomized bridge). Raw and processed data stay under the gitignored
+# data/ tree. See docs/roadmap.md for the exact files this expects under
+# data/kuairand-data/data/.
+input_dir: data/kuairand-data
+output_dir: data/processed/kuairand
+log_random_files:
+  - log_random_4_22_to_5_08_pure.csv
+log_standard_files:
+  - log_standard_4_08_to_4_21_pure.csv
+  - log_standard_4_22_to_5_08_pure.csv
+max_rows_per_file: 200000
+seed: 0
+train_fraction: 0.8
+validation_fraction: 0.1
+events_filename: events.parquet
+manifest_filename: source_manifest.json
+stats_filename: stats.json

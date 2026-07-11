@@ -13,7 +13,7 @@ from .metrics import (
     spearman_correlation,
     telescoping_residual,
 )
-from .plotting import plot_outcome_vs_credit
+from .plotting import plot_optimization_curves, plot_outcome_vs_credit
 from .reporting import write_metrics_json
 
 __all__ = [
@@ -24,6 +24,7 @@ __all__ = [
     "expected_calibration_error",
     "negative_log_likelihood",
     "pearson_correlation",
+    "plot_optimization_curves",
     "plot_outcome_vs_credit",
     "rmse",
     "sign_accuracy",

@@ -1,0 +1,19 @@
+# Preparation settings for a local WildChat-1M snapshot (ODC-BY, ungated;
+# the project's primary conversational source). Raw and processed data stay
+# under the gitignored data/ tree by project policy even though the license
+# permits redistribution -- one data-handling rule across all sources.
+input_dir: data/wildchat-data
+output_dir: data/processed/wildchat
+max_conversations: 20000
+language: English
+min_assistant_turns: 3
+max_message_chars: 8000
+exclude_flagged: true
+exclude_toxic: true
+include_redacted: true
+seed: 0
+train_fraction: 0.8
+validation_fraction: 0.1
+events_filename: events.parquet
+manifest_filename: source_manifest.json
+stats_filename: stats.json

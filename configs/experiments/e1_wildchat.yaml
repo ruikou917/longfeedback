@@ -1,0 +1,20 @@
+# Real-log delayed-outcome prediction on the prepared WildChat-1M snapshot
+# (the project's primary conversational source; see docs/data_governance.md).
+# Requires `make data-wildchat` first; all inputs stay under gitignored data/.
+processed_dir: data/processed/wildchat
+events_filename: events.parquet
+output_dir: artifacts/e1_wildchat
+seed: 0
+window: 4
+repetition_threshold: 0.6
+max_train_examples: 30000
+max_eval_examples: 10000
+ridge_alpha: 1.0
+d_model: 32
+n_layers: 1
+n_heads: 2
+epochs: 8
+batch_size: 256
+learning_rate: 1.0e-3
+min_auroc: 0.55
+auroc_margin_over_trivial: 0.02

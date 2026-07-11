@@ -42,12 +42,20 @@ def test_gate_b_pipeline_emits_decision_for_all_four_families(tmp_path: Path) ->
         "capacity_matched",
         "uncertainty_under_shift",
         "real_log_learnable",
+        "leave_one_family_out_transfer",
+        "transfer",
         "pass",
     }
     # Within each family the three variants must be capacity-matched.
     assert decision["capacity_matched"] is True
     # Real-log criterion is skipped gracefully when E1 artifacts are absent.
     assert decision["real_log"]["available"] in (True, False)
+    # Transfer is reported for all four families but never gates "pass" --
+    # it's a stretch extension beyond Gate B's original four criteria.
+    assert set(decision["transfer"]["per_family"]) == set(FAMILY_NAMES)
+    for family_result in decision["transfer"]["per_family"].values():
+        assert 0.0 <= family_result["transfer_balanced_accuracy"] <= 1.0
+        assert 0.0 <= family_result["oracle_balanced_accuracy"] <= 1.0
 
     for family in metrics["families"].values():
         assert set(family["variants"]) == {"docm_outcome", "docm_prefix", "docm_credit"}

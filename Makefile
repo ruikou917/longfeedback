@@ -1,4 +1,4 @@
-.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 gate-a gate-a-smoke gate-b data-lmsys
+.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 e5 e6 gate-a gate-a-smoke gate-b data-lmsys data-kuairand data-wildchat e1-wildchat
 
 # Full research environment (torch included); required for gate-a and mypy.
 bootstrap:
@@ -35,8 +35,23 @@ gate-a-smoke:
 data-lmsys:
 	uv run --no-sync longfeedback data prepare lmsys --config configs/data/lmsys.yaml
 
+data-wildchat:
+	uv run --no-sync longfeedback data prepare wildchat --config configs/data/wildchat.yaml
+
+data-kuairand:
+	uv run --no-sync longfeedback data prepare kuairand --config configs/data/kuairand.yaml
+
+e6:
+	uv run --no-sync longfeedback experiment run e6 --config configs/experiments/e6.yaml
+
 e1:
 	uv run --no-sync longfeedback experiment run e1 --config configs/experiments/e1.yaml
 
+e1-wildchat:
+	uv run --no-sync longfeedback experiment run e1 --config configs/experiments/e1_wildchat.yaml
+
 gate-b:
 	uv run --no-sync longfeedback experiment run gate_b --config configs/experiments/gate_b.yaml
+
+e5:
+	uv run --no-sync longfeedback experiment run e5 --config configs/experiments/e5.yaml

@@ -212,12 +212,21 @@ def build_family_specs(config: GateBConfig) -> dict[str, FamilySpec]:
     return specs
 
 
+@dataclass(frozen=True)
+class UncertaintyEvaluation:
+    """Uncertainty-quality summary plus the raw per-step arrays behind it."""
+
+    summary: dict[str, float]
+    errors: np.ndarray
+    uncertainties: np.ndarray
+
+
 def _uncertainty_metrics(
     ensemble: BootstrapEnsemble,
     regime: RegimeData,
     labels: OracleLabels,
     indices: np.ndarray,
-) -> dict[str, float]:
+) -> UncertaintyEvaluation:
     """Uncertainty quality on labeled credit targets for chosen episodes."""
 
     dataset = _sequence_dataset(regime, indices)
@@ -227,13 +236,121 @@ def _uncertainty_metrics(
     errors = np.abs(credit_mean[mask] - targets[mask])
     uncertainties = credit_std[mask]
     outcome_mean, _ = ensemble.predict_outcome_probability(dataset)
-    return {
+    summary = {
         "outcome_auroc": auroc(regime.proxies[indices], outcome_mean),
         "credit_spearman": credit_recovery_summary(targets[mask], credit_mean[mask])["spearman"],
         "uncertainty_error_spearman": spearman_correlation(errors, uncertainties),
         "error_detection_auroc": error_detection_auroc(errors, uncertainties),
         "mean_uncertainty": float(np.mean(uncertainties)),
         "labeled_steps": float(np.sum(mask)),
+    }
+    return UncertaintyEvaluation(summary=summary, errors=errors, uncertainties=uncertainties)
+
+
+def _standardize(values: np.ndarray) -> np.ndarray:
+    std = float(np.std(values))
+    if std == 0.0:
+        return np.zeros_like(values)
+    return (values - float(np.mean(values))) / std
+
+
+def _high_error_labels(errors: np.ndarray) -> np.ndarray:
+    """Within-family binary high-error label: above that family's own median.
+
+    Absolute credit-error scales are not comparable across families (each
+    world's utility/proxy units differ), so "high error" is always relative
+    to the family's own distribution -- this is what makes pooling scores
+    across families for the transfer threshold meaningful.
+    """
+
+    return np.asarray(errors > float(np.median(errors)), dtype=np.float64)
+
+
+def _balanced_accuracy(scores: np.ndarray, labels: np.ndarray, threshold: float) -> float:
+    positives = labels == 1.0
+    negatives = labels == 0.0
+    predicted_positive = scores >= threshold
+    tpr = float(np.mean(predicted_positive[positives])) if positives.any() else 0.0
+    tnr = float(np.mean(~predicted_positive[negatives])) if negatives.any() else 0.0
+    return (tpr + tnr) / 2.0
+
+
+def _best_threshold_balanced_accuracy(
+    scores: np.ndarray, labels: np.ndarray
+) -> tuple[float, float]:
+    """Return (threshold, balanced_accuracy) maximizing Youden's J over scores."""
+
+    positives = labels == 1.0
+    negatives = labels == 0.0
+    if not positives.any() or not negatives.any():
+        return float(np.median(scores)), 0.5
+    best_threshold = float(scores[0])
+    best_j = -1.0
+    for candidate in np.unique(scores):
+        predicted_positive = scores >= candidate
+        tpr = float(np.mean(predicted_positive[positives]))
+        fpr = float(np.mean(predicted_positive[negatives]))
+        j = tpr - fpr
+        if j > best_j:
+            best_j = j
+            best_threshold = float(candidate)
+    return best_threshold, _balanced_accuracy(scores, labels, best_threshold)
+
+
+def leave_one_family_out_transfer(
+    raw_uncertainty: dict[str, UncertaintyEvaluation], config: GateBConfig
+) -> dict[str, Any]:
+    """Does an uncertainty-based error-flagging threshold generalize across families?
+
+    This never transfers model weights -- infeasible, since each family has a
+    different observation space and action count by construction (four
+    distinct structural challenges, not four views of one problem). Instead,
+    each family's (uncertainty, error) pairs from its distribution-shift
+    evaluation are z-scored within that family and binarized against that
+    family's own median error; a threshold fit by pooling three families'
+    z-scored data is applied, unmodified, to the fourth. This tests only
+    whether the *shape* of the uncertainty-error relationship is family-
+    general, not whether a single trained model is.
+    """
+
+    per_family_scores = {
+        name: _standardize(evaluation.uncertainties) for name, evaluation in raw_uncertainty.items()
+    }
+    per_family_labels = {
+        name: _high_error_labels(evaluation.errors) for name, evaluation in raw_uncertainty.items()
+    }
+
+    per_family_results: dict[str, Any] = {}
+    winning_transfers = 0
+    for held_out in FAMILY_NAMES:
+        others = [name for name in FAMILY_NAMES if name != held_out]
+        pooled_scores = np.concatenate([per_family_scores[name] for name in others])
+        pooled_labels = np.concatenate([per_family_labels[name] for name in others])
+        threshold, _pooled_accuracy = _best_threshold_balanced_accuracy(
+            pooled_scores, pooled_labels
+        )
+
+        held_out_scores = per_family_scores[held_out]
+        held_out_labels = per_family_labels[held_out]
+        transfer_accuracy = _balanced_accuracy(held_out_scores, held_out_labels, threshold)
+        _oracle_threshold, oracle_accuracy = _best_threshold_balanced_accuracy(
+            held_out_scores, held_out_labels
+        )
+        transfers = bool(
+            transfer_accuracy >= 0.5 + config.decision.transfer_balanced_accuracy_margin
+        )
+        winning_transfers += int(transfers)
+        per_family_results[held_out] = {
+            "transfer_balanced_accuracy": transfer_accuracy,
+            "oracle_balanced_accuracy": oracle_accuracy,
+            "threshold_from_other_families": threshold,
+            "transfers": transfers,
+        }
+
+    return {
+        "per_family": per_family_results,
+        "winning_transfers": winning_transfers,
+        "pass": bool(winning_transfers >= config.decision.min_winning_transfers),
     }
 
 
@@ -282,6 +399,7 @@ def run_gate_b(config: GateBConfig, *, output_dir: Path | None = None) -> Experi
     winning_families = 0
     uncertainty_pass_families: list[str] = []
     capacity_matched_per_family: list[bool] = []
+    raw_uncertainty_under_shift: dict[str, UncertaintyEvaluation] = {}
 
     for name, spec in specs.items():
         regime = spec.train_regime
@@ -352,10 +470,11 @@ def run_gate_b(config: GateBConfig, *, output_dir: Path | None = None) -> Experi
         shifted_indices = np.arange(len(shifted.episodes), dtype=np.int64)
         shifted_labels = label_oracle_credit(shifted, shifted_indices, config.oracle)
         under_shift = _uncertainty_metrics(ensemble, shifted, shifted_labels, shifted_indices)
+        raw_uncertainty_under_shift[name] = under_shift
         uncertainty_pass = (
-            under_shift["uncertainty_error_spearman"]
+            under_shift.summary["uncertainty_error_spearman"]
             >= config.decision.uncertainty_spearman_threshold
-            and under_shift["error_detection_auroc"]
+            and under_shift.summary["error_detection_auroc"]
             >= config.decision.error_detection_auroc_threshold
         )
         if uncertainty_pass:
@@ -378,18 +497,20 @@ def run_gate_b(config: GateBConfig, *, output_dir: Path | None = None) -> Experi
             "credit_supervision_wins": bool(wins),
             "ensemble": {
                 "members": config.ensemble_members,
-                "in_distribution": in_distribution,
-                "under_shift": under_shift,
+                "in_distribution": in_distribution.summary,
+                "under_shift": under_shift.summary,
                 "outcome_auroc_degradation": (
-                    in_distribution["outcome_auroc"] - under_shift["outcome_auroc"]
+                    in_distribution.summary["outcome_auroc"] - under_shift.summary["outcome_auroc"]
                 ),
                 "credit_spearman_degradation": (
-                    in_distribution["credit_spearman"] - under_shift["credit_spearman"]
+                    in_distribution.summary["credit_spearman"]
+                    - under_shift.summary["credit_spearman"]
                 ),
                 "uncertainty_pass_under_shift": bool(uncertainty_pass),
             },
         }
 
+    transfer = leave_one_family_out_transfer(raw_uncertainty_under_shift, config)
     real_log = _real_log_criterion(config, repository)
     decision = {
         "credit_recovery_across_families": winning_families >= config.decision.min_winning_families,
@@ -399,6 +520,14 @@ def run_gate_b(config: GateBConfig, *, output_dir: Path | None = None) -> Experi
         "uncertainty_pass_families": uncertainty_pass_families,
         "real_log_learnable": real_log["pass"],
         "real_log": real_log,
+        # Reported honestly alongside the four original Gate B criteria but
+        # deliberately not gating "pass" on it: this is a stretch extension
+        # (does the uncertainty-error relationship generalize across
+        # families?), not part of what "Gate B passed" already meant when it
+        # was recorded, and a negative result here should surface as a
+        # finding, not silently flip an already-established gate to failing.
+        "leave_one_family_out_transfer": transfer["pass"],
+        "transfer": transfer,
     }
     decision["pass"] = bool(
         decision["credit_recovery_across_families"]

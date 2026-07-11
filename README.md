@@ -5,13 +5,15 @@ arrive after many decisions. It keeps four quantities separate: an observed
 behavioral proxy, true utility in controlled worlds, predictive contribution,
 and interventional action credit.
 
-The repository has completed the **v0.2 research milestone**: four structural
+The repository has completed the **v0.3 research milestone**: four structural
 world families with oracle counterfactual credit, capacity-matched DOCM
 variants, bootstrap-ensemble uncertainty evaluated under distribution shift,
-a real-log delayed-outcome replication, and an auto-generated paper-style
-report ([reports/v0_2_report.md](reports/v0_2_report.md)). The central result:
-models that predict the terminal outcome equally well differ drastically in
-recovering true per-step interventional credit, in every family tested.
+real-log delayed-outcome replications on WildChat and LMSYS, a controlled
+reward-overoptimization study, and a randomized-log confounding bridge on
+KuaiRand. The v0.2 paper-style report remains available at
+[reports/v0_2_report.md](reports/v0_2_report.md). The central result: models
+that predict the terminal outcome equally well differ drastically in recovering
+true per-step interventional credit, in every family tested.
 
 ## What E0 establishes
 
@@ -46,8 +48,13 @@ make test
 make e0         # deterministic pipeline sanity (CPU, seconds)
 make gate-a     # Gate A experiment (CPU, about a minute)
 make gate-b     # Gate B: four families, ensembles, distribution shift
-make data-lmsys # optional: prepare a local LMSYS-Chat-1M snapshot
-make e1         # real-log delayed-outcome prediction (needs data-lmsys)
+make e5         # reward overoptimization + mitigation study (World D)
+make data-wildchat # optional: prepare a local WildChat-1M snapshot (primary conversational source)
+make e1-wildchat   # real-log delayed-outcome prediction on WildChat (needs data-wildchat)
+make data-lmsys    # optional: prepare a local LMSYS-Chat-1M snapshot (secondary replication source)
+make e1            # real-log delayed-outcome prediction on LMSYS (needs data-lmsys)
+make data-kuairand # optional: prepare a local KuaiRand-Pure snapshot (see docs/roadmap.md)
+make e6            # randomized bridge: confounded-log bias vs. true randomized rates (needs data-kuairand)
 ```
 
 Regenerate the paper-style report from the artifacts with
@@ -96,8 +103,9 @@ tests/                   Unit, property, integration, and reproducibility tests
 1. E0 deterministic pipeline sanity. (done)
 2. Stochastic Worlds A/B, RUDDER, and DOCM MVP (Gate A). (done)
 3. Real-log predictive outcomes plus Worlds C/D and uncertainty (Gate B). (done)
-4. Policy improvement, reward overoptimization, and LLM reranking.
-5. Delayed-reward infrastructure extraction only after repeated abstractions
+4. Reward overoptimization and randomized-log bridge (v0.3). (done)
+5. LLM-native reranking (E7). (design proposed; implementation pending scope)
+6. Delayed-reward infrastructure extraction only after repeated abstractions
    justify Gate C.
 
 See [the scientific contract](docs/scientific_contract.md) and
@@ -105,11 +113,10 @@ See [the scientific contract](docs/scientific_contract.md) and
 
 ## Data and safety
 
-No public interaction dataset is required by E0 or Gate A. The optional LMSYS
-adapter operates on a locally downloaded, gated snapshot: it pins the dataset
-revision and shard checksums, drops moderation-flagged conversations, applies a
-versioned local PII pass, and keeps raw and processed text inside the gitignored
-`data/` tree because the dataset license prohibits redistribution. See
+No public interaction dataset is required by E0, Gate A, Gate B, or E5. The
+optional WildChat, LMSYS, and KuaiRand adapters keep raw and processed data in
+the gitignored `data/` tree, record source provenance, and apply source-specific
+filtering and deterministic outcome rules. See
 [data governance](docs/data_governance.md). Behavioral engagement is a proxy,
 not user welfare.
 

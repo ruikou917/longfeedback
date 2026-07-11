@@ -32,7 +32,36 @@ Before any real-data adapter is enabled:
   event times are synthetic and chronological splits are impossible (splits are
   stable conversation-id hashes); it has no user identifiers, so user-level
   leakage across splits cannot be ruled out.
-- **Role:** secondary replication source. WildChat-1M (ODC-BY) remains the primary
-  conversational source and gets its adapter during Gate B.
+- **Role:** secondary replication source. WildChat-1M (ODC-BY) is the primary
+  conversational source (adapter below); this snapshot exists to confirm E1's
+  finding is not an artifact of one source.
+
+### WildChat-1M (local snapshot; adapter `longfeedback data prepare wildchat`)
+
+- **Access:** ungated HuggingFace dataset (`allenai/WildChat-1M`), fetched directly
+  (no sign-in or agreement required, unlike LMSYS). The snapshot lives in the
+  gitignored `data/` tree; the adapter pins the HF commit hash (when fetched via
+  `huggingface_hub`'s cache) or falls back to per-shard sha256 checksums in
+  `source_manifest.json`.
+- **License obligations:** ODC-BY 1.0 permits redistribution with attribution, but
+  raw and processed text stay local anyway — one data-handling policy across every
+  conversational source, not a license requirement specific to WildChat.
+- **What may be published:** adapter code, source manifests, row identifiers
+  (`shard:row` and source conversation hashes), and aggregate statistics only.
+- **Sanitization:** the source ships a `redacted` flag and its own toxicity/OpenAI
+  moderation labels; the adapter excludes flagged *and* toxic conversations by
+  default and adds the same local high-precision regex PII pass used for LMSYS
+  (`pii_filter_version`). The source also carries country, state, and hashed-IP
+  fields per turn — the adapter never reads or forwards them into canonical
+  payloads (only `role`/`content` cross into the `Trajectory`).
+- **Known caveats (recorded in `stats.json`):** the source has real per-turn
+  timestamps, but the adapter deliberately uses the same synthetic
+  conversation-relative event times as the LMSYS adapter (E1 only needs turn
+  order) rather than threading real timestamps through — a scope choice, not a
+  data limitation; it has hashed IPs but no stable user identifier, so user-level
+  leakage across splits cannot be ruled out.
+- **Role:** primary conversational source. `make e1-wildchat` reruns E1 against
+  it; results are compared against the LMSYS replication, never merged into one
+  number.
 
 Dataset work cannot block the structural-world experiments (E0/Gate A).

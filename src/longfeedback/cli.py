@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -12,14 +12,22 @@ from longfeedback import __version__
 from longfeedback.config import (
     E0Config,
     E1Config,
+    E5Config,
+    E6Config,
     GateAConfig,
     GateBConfig,
+    KuaiRandDataConfig,
     LmsysDataConfig,
+    WildChatDataConfig,
     load_e0_config,
     load_e1_config,
+    load_e5_config,
+    load_e6_config,
     load_gate_a_config,
     load_gate_b_config,
+    load_kuairand_data_config,
     load_lmsys_data_config,
+    load_wildchat_data_config,
 )
 
 app = typer.Typer(
@@ -60,7 +68,7 @@ def main(
 def run_experiment(
     name: Annotated[
         str,
-        typer.Argument(help="Experiment name: 'e0', 'e1', 'gate_a', or 'gate_b'."),
+        typer.Argument(help="Experiment name: 'e0', 'e1', 'e5', 'e6', 'gate_a', or 'gate_b'."),
     ],
     config_path: Annotated[
         Path | None,
@@ -127,9 +135,33 @@ def run_experiment(
 
         gate_b_config = GateBConfig() if config_path is None else load_gate_b_config(config_path)
         result = run_gate_b(gate_b_config, output_dir=output_dir)
+    elif experiment_name == "e5":
+        try:
+            from longfeedback.experiments.e5 import run_e5
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e5 experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        e5_config = E5Config() if config_path is None else load_e5_config(config_path)
+        result = run_e5(e5_config, output_dir=output_dir)
+    elif experiment_name == "e6":
+        try:
+            from longfeedback.experiments.e6 import run_e6
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e6 experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        e6_config = E6Config() if config_path is None else load_e6_config(config_path)
+        result = run_e6(e6_config, output_dir=output_dir)
     else:
         raise typer.BadParameter(
-            "unknown experiment; expected 'e0', 'e1', 'gate_a', or 'gate_b'",
+            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'gate_a', or 'gate_b'",
             param_hint="name",
         )
     typer.echo(json.dumps(result.metrics, indent=2, sort_keys=True))
@@ -139,7 +171,7 @@ def run_experiment(
 def prepare_data(
     source: Annotated[
         str,
-        typer.Argument(help="Source dataset name; currently only 'lmsys'."),
+        typer.Argument(help="Source dataset name; 'lmsys', 'wildchat', or 'kuairand'."),
     ],
     config_path: Annotated[
         Path | None,
@@ -172,19 +204,48 @@ def prepare_data(
 ) -> None:
     """Prepare a local dataset snapshot and print its statistics as JSON."""
 
-    if source.lower() != "lmsys":
-        raise typer.BadParameter("unknown source; expected 'lmsys'", param_hint="source")
+    source_name = source.lower()
+    if source_name not in ("lmsys", "wildchat", "kuairand"):
+        raise typer.BadParameter(
+            "unknown source; expected 'lmsys', 'wildchat', or 'kuairand'", param_hint="source"
+        )
     try:
-        from longfeedback.data.lmsys import prepare_lmsys
+        stats: dict[str, Any]
+        if source_name == "lmsys":
+            from longfeedback.data.lmsys import prepare_lmsys
+
+            lmsys_config = (
+                LmsysDataConfig() if config_path is None else load_lmsys_data_config(config_path)
+            )
+            stats = prepare_lmsys(lmsys_config, input_dir=input_dir, output_dir=output_dir).stats
+        elif source_name == "wildchat":
+            from longfeedback.data.wildchat import prepare_wildchat
+
+            wildchat_config = (
+                WildChatDataConfig()
+                if config_path is None
+                else load_wildchat_data_config(config_path)
+            )
+            stats = prepare_wildchat(
+                wildchat_config, input_dir=input_dir, output_dir=output_dir
+            ).stats
+        else:
+            from longfeedback.data.kuairand import prepare_kuairand
+
+            kuairand_config = (
+                KuaiRandDataConfig()
+                if config_path is None
+                else load_kuairand_data_config(config_path)
+            )
+            stats = prepare_kuairand(
+                kuairand_config, input_dir=input_dir, output_dir=output_dir
+            ).stats
     except ImportError as error:
         raise typer.BadParameter(
             "data preparation needs the research extra; install it with `uv sync --extra research`",
             param_hint="source",
         ) from error
-
-    config = LmsysDataConfig() if config_path is None else load_lmsys_data_config(config_path)
-    result = prepare_lmsys(config, input_dir=input_dir, output_dir=output_dir)
-    typer.echo(json.dumps(result.stats, indent=2, sort_keys=True))
+    typer.echo(json.dumps(stats, indent=2, sort_keys=True))
 
 
 @report_app.command("build")

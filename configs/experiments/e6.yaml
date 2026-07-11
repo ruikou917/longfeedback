@@ -1,0 +1,12 @@
+# E6: the randomized bridge -- confounded-log bias vs. true randomized rates.
+# Needs `make data-kuairand` to have run first.
+processed_dir: data/processed/kuairand
+events_filename: events.parquet
+output_dir: artifacts/e6
+seed: 0
+min_exposures_per_video: 5
+bias_detection_threshold: 0.02
+rank_correlation_threshold: 0.2
+metrics_filename: metrics.json
+predictions_filename: predictions.csv
+manifest_filename: run_manifest.json

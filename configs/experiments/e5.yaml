@@ -1,0 +1,40 @@
+name: e5
+seed: 0
+train_fraction: 0.8
+output_dir: artifacts/e5
+# Broad support: RM sees most of the state space (misalignment channel
+# dominates). Narrow support: small, low-exploration log so off-policy
+# trajectories are OOD for the ensemble (RM-error channel active).
+logging_regimes:
+  - {name: broad, episodes: 384, behavior_epsilon: 0.3}
+  - {name: narrow, episodes: 96, behavior_epsilon: 0.1}
+evaluation_episodes: 128
+
+reward_model:
+  d_model: 32
+  n_layers: 1
+  n_heads: 2
+  epochs: 30
+  batch_size: 128
+  learning_rate: 1.0e-3
+  ensemble_members: 5
+  lcb_lambda: 1.0
+
+optimization:
+  updates: 240
+  checkpoint_every: 15
+  batch_episodes: 32
+  learning_rate: 0.05
+  entropy_coefficient: 0.01
+  kl_beta: 0.3
+  behavior_clone_epochs: 120
+  behavior_clone_learning_rate: 0.05
+
+decision:
+  hacking_gap_threshold: 0.5
+  mitigation_margin: 0.1
+
+metrics_filename: metrics.json
+predictions_filename: predictions.csv
+plot_filename: optimization_curves.png
+manifest_filename: run_manifest.json
