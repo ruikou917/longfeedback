@@ -456,6 +456,34 @@ class E9Config(StrictModel):
     manifest_filename: str = "run_manifest.json"
 
 
+class E9bDecisionSettings(StrictModel):
+    """Predeclared E9b thresholds (docs/real_credit_protocol.md, 2026-07-12)."""
+
+    auroc_tolerance: float = Field(default=0.05, ge=0.0)
+    seeds: tuple[int, ...] = (0, 1, 2, 3, 4)
+    min_positive_seeds: int = Field(default=4, ge=1)
+
+
+class E9bConfig(StrictModel):
+    """Proximal-horizon HeartSteps model grading (predeclared contract E9b)."""
+
+    name: Literal["e9b"] = "e9b"
+    processed_dir: Path = Path("data/processed/heartsteps")
+    decisions_filename: str = "decisions.parquet"
+    output_dir: Path = Path("artifacts/e9b")
+    crossfit_folds: int = Field(default=5, ge=2)
+    ridge_alpha: float = Field(default=1.0, ge=0.0)
+    evaluation_folds: int = Field(default=3, ge=2)
+    episode_slots: int = Field(default=5, ge=2)
+    bootstrap: ClusterBootstrapSettings = ClusterBootstrapSettings()
+    model: GateAModelSettings = GateAModelSettings()
+    training: GateATrainingSettings = GateATrainingSettings()
+    decision: E9bDecisionSettings = E9bDecisionSettings()
+    metrics_filename: str = "metrics.json"
+    predictions_filename: str = "predictions.csv"
+    manifest_filename: str = "run_manifest.json"
+
+
 class GateBExperimentSettings(StrictModel):
     """Reproducibility settings for the Gate B experiment."""
 
@@ -777,6 +805,12 @@ def load_e9_config(path: Path) -> E9Config:
     """Load and validate an E9 YAML file."""
 
     return E9Config.model_validate(_load_yaml_mapping(path))
+
+
+def load_e9b_config(path: Path) -> E9bConfig:
+    """Load and validate an E9b YAML file."""
+
+    return E9bConfig.model_validate(_load_yaml_mapping(path))
 
 
 def dump_resolved_config(config: StrictModel) -> dict[str, Any]:

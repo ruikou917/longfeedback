@@ -15,6 +15,7 @@ from longfeedback.config import (
     E5Config,
     E6Config,
     E8Config,
+    E9bConfig,
     E9Config,
     GateAConfig,
     GateBConfig,
@@ -30,6 +31,7 @@ from longfeedback.config import (
     load_e6_config,
     load_e8_config,
     load_e9_config,
+    load_e9b_config,
     load_gate_a_config,
     load_gate_b_config,
     load_heartsteps_data_config,
@@ -80,8 +82,8 @@ def run_experiment(
         str,
         typer.Argument(
             help=(
-                "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'gate_a', "
-                "'gate_b', or 'multiseed'."
+                "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'e9b', "
+                "'gate_a', 'gate_b', or 'multiseed'."
             )
         ),
     ],
@@ -191,6 +193,18 @@ def run_experiment(
 
         e9_config = E9Config() if config_path is None else load_e9_config(config_path)
         result = run_e9(e9_config, output_dir=output_dir)
+    elif experiment_name == "e9b":
+        try:
+            from longfeedback.experiments.e9b import run_e9b
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e9b experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        e9b_config = E9bConfig() if config_path is None else load_e9b_config(config_path)
+        result = run_e9b(e9b_config, output_dir=output_dir)
     elif experiment_name == "multiseed":
         try:
             # multiseed itself is torch-free; importing gate_b checks that the
@@ -210,8 +224,8 @@ def run_experiment(
         result = run_multiseed(multiseed_config, output_dir=output_dir)
     else:
         raise typer.BadParameter(
-            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'gate_a', "
-            "'gate_b', or 'multiseed'",
+            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'e9b', "
+            "'gate_a', 'gate_b', or 'multiseed'",
             param_hint="name",
         )
     typer.echo(json.dumps(result.metrics, indent=2, sort_keys=True))

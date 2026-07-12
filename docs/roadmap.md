@@ -235,9 +235,6 @@ can look strongly informative while carrying essentially zero delayed
 interventional effect — per-step credit inferred observationally from such
 data would be mostly confounding.
 
-Next: E9 applies established distal causal-excursion methodology to the public
-HeartSteps micro-randomized trial. See `docs/real_credit_protocol.md`.
-
 ### E9 — HeartSteps randomized longitudinal benchmark (done)
 
 The adapter pins public CC BY 4.0 HeartSteps V1 revision `3016391...`, removes
