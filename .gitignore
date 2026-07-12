@@ -28,6 +28,11 @@ reports/generated/
 *.parquet
 *.arrow
 
+# Research design/results docs stay local-only; the remote repo ships code.
+/LongFeedback.md
+/docs/
+/reports/
+
 # Experiment services and credentials
 .env
 wandb/
