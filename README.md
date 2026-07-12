@@ -53,7 +53,7 @@ make data-wildchat # optional: prepare a local WildChat-1M snapshot (primary con
 make e1-wildchat   # real-log delayed-outcome prediction on WildChat (needs data-wildchat)
 make data-lmsys    # optional: prepare a local LMSYS-Chat-1M snapshot (secondary replication source)
 make e1            # real-log delayed-outcome prediction on LMSYS (needs data-lmsys)
-make data-kuairand # optional: prepare a local KuaiRand-Pure snapshot (see docs/roadmap.md)
+make data-kuairand # optional: prepare a local KuaiRand-Pure snapshot
 make e6            # randomized bridge: confounded-log bias vs. true randomized rates (needs data-kuairand)
 make data-kuairand-sessions # rebuild complete multi-step KuaiRand sessions
 make e8            # randomized-step delayed-survival power gate (needs sessions)
@@ -91,7 +91,6 @@ make qa
 
 ```text
 configs/                 Versioned experiment configuration
-docs/                    Scientific contracts, assumptions, and decisions
 src/longfeedback/schema  Canonical serialized records
 src/longfeedback/data    Source dataset adapters (conversations -> trajectories)
 src/longfeedback/worlds  Controlled structural environments
@@ -105,24 +104,17 @@ tests/                   Unit, property, integration, and reproducibility tests
 
 ## Development sequence
 
-1. E0 deterministic pipeline sanity. (done)
-2. Stochastic Worlds A/B, RUDDER, and DOCM MVP (Gate A). (done)
-3. Real-log predictive outcomes plus Worlds C/D and uncertainty (Gate B). (done)
-4. Reward overoptimization and randomized-log bridge (v0.3). (done)
-5. LLM-native reranking (E7). (design proposed; implementation pending scope)
-6. Delayed-reward infrastructure extraction only after repeated abstractions
-   justify Gate C.
-
-See [the scientific contract](docs/scientific_contract.md) and
-[the roadmap](docs/roadmap.md) before extending a target or making a causal claim.
+1. E0 deterministic pipeline sanity.
+2. Stochastic Worlds A/B, RUDDER, and DOCM MVP (Gate A).
+3. Real-log predictive outcomes plus Worlds C/D and uncertainty (Gate B).
+4. Reward overoptimization and randomized-log bridge (v0.3).
 
 ## Data and safety
 
 No public interaction dataset is required by E0, Gate A, Gate B, or E5. The
 optional WildChat, LMSYS, and KuaiRand adapters keep raw and processed data in
 the gitignored `data/` tree, record source provenance, and apply source-specific
-filtering and deterministic outcome rules. See
-[data governance](docs/data_governance.md). Behavioral engagement is a proxy,
+filtering and deterministic outcome rules. Behavioral engagement is a proxy,
 not user welfare.
 
 ## License
