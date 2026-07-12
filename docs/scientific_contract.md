@@ -216,6 +216,44 @@ only outcome base rates (marginals, not effects) informed the horizon rule.
   effect excludes zero. A proximal reproduction alone validates the analysis
   machinery but does not support the project's delayed-credit model claim.
 
+## E10-HS-Day acceptance contract (frozen before effect computation)
+
+- **Trajectory and outcome.** One trajectory is five consecutive scheduled
+  HeartSteps decisions for one participant pseudo-day, using the published
+  decision-number ordering. Days with other than five recorded decisions are
+  excluded before treatment/outcome analysis. The only model outcome is the
+  terminal daily activity score: the mean of `log1p(jbsteps30)` over all five
+  decisions. Component window outcomes are never model inputs or intermediate
+  rewards.
+- **Intervention and estimand.** At every available decision, suggestion
+  delivery was randomized with known probability 0.6. Credit is the
+  intent-to-treat effect of sending versus not sending a suggestion on the
+  terminal daily score, under the trial's randomized future continuation.
+  Effects are group-level, never individual counterfactuals.
+- **Predeclared groups.** Decision position 1--5 crossed with home/work versus
+  other context (10 groups). Position is order within the reconstructed day,
+  not the source's occasionally missing `decision_slot` field.
+- **Inference.** Point estimates are randomized differences in means.
+  Percentile bootstrap resamples participants with all their days and
+  decisions intact. The global CI is 95%; group discovery uses simultaneous
+  Bonferroni 95% familywise coverage across the 10 fixed groups.
+- **Phase-1 signal gate.** A relevant detected effect has absolute magnitude
+  at least 0.01 terminal-score units and a CI excluding zero. Precision is
+  adequate only when the median group bootstrap SE is at most 0.15. Model
+  grading is authorized when precision is adequate and either the global
+  effect is relevant/detected or at least two fixed groups are
+  relevant/detected. If the gate fails, no model is trained and this outcome
+  is not redefined.
+- **Phase 2.** If authorized, capacity-matched outcome-only, prefix/RUDDER,
+  and credit-supervised models are evaluated with participant-level
+  cross-fitting. The primary comparison uses a held-out randomized causal
+  loss or equivalently precision-weighted held-out group effects; exact
+  calibration, seed robustness, and matched-outcome thresholds must be
+  committed before any model result is computed.
+- **Scope.** A pass supports a domain-general real randomized multi-step
+  behavioral claim. It does not establish conversational transfer, long-term
+  welfare, or exact unit-level credit.
+
 ## E6 acceptance contract (randomized bridge)
 
 - E6 is the first real (non-simulated) data source licensed for causal claims,

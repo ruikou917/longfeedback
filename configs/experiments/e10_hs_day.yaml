@@ -1,0 +1,14 @@
+name: e10_hs_day
+processed_dir: data/processed/heartsteps
+decisions_filename: decisions.parquet
+output_dir: artifacts/e10_hs_day
+decisions_per_day: 5
+min_abs_effect: 0.01
+max_median_group_se: 0.15
+min_detected_groups: 2
+bootstrap_resamples: 2000
+bootstrap_confidence: 0.95
+bootstrap_seed: 0
+metrics_filename: metrics.json
+predictions_filename: group_effects.csv
+manifest_filename: run_manifest.json
