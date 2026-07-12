@@ -1,4 +1,4 @@
-.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 e5 e6 gate-a gate-a-smoke gate-b data-lmsys data-kuairand data-wildchat e1-wildchat
+.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 e5 e6 gate-a gate-a-smoke gate-b multiseed data-lmsys data-kuairand data-wildchat e1-wildchat
 
 # Full research environment (torch included); required for gate-a and mypy.
 bootstrap:
@@ -55,3 +55,8 @@ gate-b:
 
 e5:
 	uv run --no-sync longfeedback experiment run e5 --config configs/experiments/e5.yaml
+
+# Design doc 13.5 statistical protocol: gate_b + e5 across five seeds with
+# bootstrap confidence intervals on the predeclared primary metrics.
+multiseed:
+	uv run --no-sync longfeedback experiment run multiseed --config configs/experiments/multiseed.yaml

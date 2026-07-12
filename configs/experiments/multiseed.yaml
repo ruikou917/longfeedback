@@ -1,0 +1,105 @@
+name: multiseed
+# Design doc 13.5: >=5 seeds, paired evaluation, bootstrap CIs over the
+# predeclared primary metrics, effect sizes in native units.
+seeds: [0, 1, 2, 3, 4]
+min_seeds: 5
+experiments: [gate_b, e5]
+output_dir: artifacts/multiseed
+
+bootstrap:
+  resamples: 10000
+  confidence: 0.95
+  seed: 0
+
+# Embedded per-seed configurations; identical to configs/experiments/
+# gate_b.yaml and e5.yaml except that the seed is overridden per run and
+# artifacts land under output_dir/<experiment>/seed_<seed>/.
+gate_b:
+  experiment:
+    name: gate_b
+    seed: 0
+    train_fraction: 0.8
+    output_dir: artifacts/gate_b
+
+  families:
+    episodes: 256
+    label_train_episodes: 96
+    shift_episodes: 128
+
+  oracle:
+    continuation_mode: frozen
+    reference_action: 0
+    initial_rollouts: 16
+    max_rollouts: 64
+    se_threshold: 0.15
+    label_train_episodes: 96
+    stability_examples: 96
+    stability_seed_offset: 100003
+
+  model:
+    d_model: 64
+    n_layers: 2
+    n_heads: 4
+    dropout: 0.0
+
+  training:
+    epochs: 40
+    batch_size: 128
+    learning_rate: 1.0e-3
+    weight_decay: 0.01
+    grad_clip: 1.0
+
+  ensemble_members: 5
+
+  decision:
+    credit_spearman_margin: 0.02
+    min_winning_families: 3
+    uncertainty_spearman_threshold: 0.2
+    error_detection_auroc_threshold: 0.6
+    require_real_log: true
+    e1_metrics_path: artifacts/e1/metrics.json
+
+  report:
+    metrics_filename: metrics.json
+    predictions_filename: predictions.csv
+    plot_filename: outcome_vs_credit.png
+    manifest_filename: run_manifest.json
+
+e5:
+  name: e5
+  seed: 0
+  train_fraction: 0.8
+  output_dir: artifacts/e5
+  logging_regimes:
+    - {name: broad, episodes: 384, behavior_epsilon: 0.3}
+    - {name: narrow, episodes: 96, behavior_epsilon: 0.1}
+  evaluation_episodes: 128
+
+  reward_model:
+    d_model: 32
+    n_layers: 1
+    n_heads: 2
+    epochs: 30
+    batch_size: 128
+    learning_rate: 1.0e-3
+    ensemble_members: 5
+    lcb_lambda: 1.0
+
+  optimization:
+    updates: 240
+    checkpoint_every: 15
+    batch_episodes: 32
+    learning_rate: 0.05
+    entropy_coefficient: 0.01
+    kl_beta: 0.3
+    behavior_clone_epochs: 120
+    behavior_clone_learning_rate: 0.05
+
+  decision:
+    hacking_gap_threshold: 0.5
+    mitigation_margin: 0.1
+
+  metrics_filename: metrics.json
+  predictions_filename: predictions.csv
+  plot_filename: optimization_curves.png
+  manifest_filename: run_manifest.json

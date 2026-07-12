@@ -73,7 +73,9 @@ rewards in World D, under broad and narrow logging support. `make e5` result:
 the Goodhart effect is clearly demonstrated in both regimes (hacking gap up to
 ~10 utility points); the KL-to-behavior-clone penalty materially mitigates it,
 but ensemble-LCB pessimism does not — hypothesis H5 is recorded as
-`refuted_in_this_environment`, not tuned away.
+`refuted_in_this_environment`, not tuned away. (The multi-seed protocol below
+later refined this: the LCB refutation is seed-robust under narrow support but
+seed 0 understated LCB under broad support, where it does robustly help.)
 
 Next: LLM-native reranking (E7) — design proposal below, not started (needs a
 user decision on API budget/provider before implementation, unlike E5/E6).
@@ -127,6 +129,42 @@ assignment across delayed, multi-step outcomes) — that still only has
 synthetic-world evidence (Gate A/B), because real data never provides ground
 truth credit to check against.
 
+### Multi-seed statistical protocol (done)
+
+The design doc §13.5 protocol is implemented as the `multiseed` experiment
+(`make multiseed`, `src/longfeedback/experiments/multiseed.py`): it reruns
+the unmodified Gate B and E5 pipelines across five seeds and reports the
+predeclared primary metrics with percentile-bootstrap 95% CIs over seeds
+(paired within seed; effect sizes in native units — see the contract section
+in `docs/scientific_contract.md`). Real result (2026-07-11, seeds 0–4, all
+ten per-seed runs individually passing, `artifacts/multiseed/`):
+
+- **Gate B credit recovery is robust in all four families**, stronger than
+  the single-seed claim (which needed only 3/4): per-family credit margin of
+  `docm_credit` over the best baseline has CI entirely above zero — World A
+  +0.81 [+0.65, +0.95], World B +0.12 [+0.06, +0.19], World C +0.18
+  [+0.06, +0.30], World D +0.83 [+0.81, +0.84]. Uncertainty-flags-error
+  under shift is likewise robust in all four families (error-detection AUROC
+  CIs all above 0.71).
+- **The leave-one-family-out transfer finding replicates**: Worlds A/B/D
+  transfer stably across seeds (0.83/0.94/0.63 mean balanced accuracy, tight
+  CIs), while World C sits at exactly chance (0.50) in 4 of 5 seeds (mean
+  0.60, CI [0.50, 0.80] — includes chance). The single-seed "World C does
+  not transfer" result was not a seed artifact.
+- **E5's Goodhart effect is robust in both regimes**: hacking gap of the
+  `single` reward is +9.3 [+8.7, +9.9] utility points under narrow support
+  and +5.6 [+3.8, +7.7] under broad. **KL mitigation is robust in both**
+  (narrow: gap reduction +7.8 [+7.5, +8.2]).
+- **The multi-seed evidence refines seed 0's H5 refutation**: LCB pessimism
+  is a robust mitigation under *broad* support (gap reduction +2.6
+  [+0.8, +4.1], utility gain +3.2 [+0.9, +5.5]) but not under narrow support
+  (−0.0 [−0.8, +0.9], CI spans zero) — precisely the regime where the
+  RM-error channel it targets is most active. So the honest multi-seed
+  verdict is: LCB helps where reward-model error is mild and fails where it
+  matters most; the single-seed refutation stands for the narrow regime and
+  was itself partly a seed artifact for the broad one (seed 0 is the only
+  seed with a negative broad-regime LCB delta).
+
 ### E7 — LLM-native reranking (design proposal, not started)
 
 Unlike E5/E6, this item has no established pattern to extend from in this
@@ -160,12 +198,25 @@ rubric since it fixes what "reward" means for this experiment's claims.
 Implementation should wait for that; nothing about it needs a slow
 data-download turnaround the way E6 does, so once scoped it should move fast.
 
+### E8 — real multi-step credit via randomized session steps (in progress)
+
+The core credit-assignment claim has only synthetic evidence (Gate A/B);
+real logs never reveal per-step counterfactuals. E8 attacks the strongest
+available substitute: KuaiRand's randomly-inserted videos are genuine
+mid-session randomized interventions inside real user trajectories
+(verified on the local snapshot: 65,974 sessions mix randomized and
+standard steps; 322,736 of the 1,186,059 randomized steps have >=3
+subsequent same-session impressions). Phase 1 (power gate) asks whether a
+single randomized step causally moves *later-session* survival at all;
+phase 2 (gated on phase 1) grades observationally-trained credit models
+against those randomized effects on held-out users. Contract frozen before
+any effect computation — see "E8 acceptance contract" in
+`docs/scientific_contract.md` and ADR-012.
+
 ## Backlog
 
 - Human validation of the E1 rule labels: ~1,000 stratified examples, two
   annotators on ≥20%, agreement statistics (design doc §6.6).
-- Multi-seed statistical protocol: ≥5 seeds with bootstrap confidence
-  intervals for the primary Gate B and E5 tables (design doc §13.5).
 - CI housekeeping: bump `actions/checkout` and `setup-uv` off the deprecated
   Node 20 runtime.
 

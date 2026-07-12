@@ -18,6 +18,7 @@ from longfeedback.config import (
     GateBConfig,
     KuaiRandDataConfig,
     LmsysDataConfig,
+    MultiSeedConfig,
     WildChatDataConfig,
     load_e0_config,
     load_e1_config,
@@ -27,6 +28,7 @@ from longfeedback.config import (
     load_gate_b_config,
     load_kuairand_data_config,
     load_lmsys_data_config,
+    load_multiseed_config,
     load_wildchat_data_config,
 )
 
@@ -68,7 +70,9 @@ def main(
 def run_experiment(
     name: Annotated[
         str,
-        typer.Argument(help="Experiment name: 'e0', 'e1', 'e5', 'e6', 'gate_a', or 'gate_b'."),
+        typer.Argument(
+            help=("Experiment name: 'e0', 'e1', 'e5', 'e6', 'gate_a', 'gate_b', or 'multiseed'.")
+        ),
     ],
     config_path: Annotated[
         Path | None,
@@ -159,9 +163,27 @@ def run_experiment(
 
         e6_config = E6Config() if config_path is None else load_e6_config(config_path)
         result = run_e6(e6_config, output_dir=output_dir)
+    elif experiment_name == "multiseed":
+        try:
+            # multiseed itself is torch-free; importing gate_b checks that the
+            # research extra backing the per-seed runs is installed.
+            import longfeedback.experiments.gate_b  # noqa: F401
+            from longfeedback.experiments.multiseed import run_multiseed
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the multiseed experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        multiseed_config = (
+            MultiSeedConfig() if config_path is None else load_multiseed_config(config_path)
+        )
+        result = run_multiseed(multiseed_config, output_dir=output_dir)
     else:
         raise typer.BadParameter(
-            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'gate_a', or 'gate_b'",
+            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'gate_a', 'gate_b', "
+            "or 'multiseed'",
             param_hint="name",
         )
     typer.echo(json.dumps(result.metrics, indent=2, sort_keys=True))

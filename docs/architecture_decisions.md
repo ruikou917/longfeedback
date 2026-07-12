@@ -107,3 +107,29 @@ self-calibrated score), it is reported as `gate_b_decision.transfer` but
 deliberately excluded from the `pass` boolean -- a negative or partial result
 here is a genuine finding to report, not grounds to silently flip an
 already-established gate to failing.
+
+## ADR-012: E8 sessions are derived by a 30-minute gap rule, and randomized
+steps are graded on within-session survival only
+
+E8 rebuilds KuaiRand as multi-step trajectories to test credit assignment
+against real interventions. Three choices are fixed here rather than tuned:
+
+1. **Sessionization**: one user's impressions from the random and standard
+   logs are merged and sorted by `time_ms`; a new session starts at any gap
+   over 30 minutes. The threshold follows common industry convention and was
+   chosen before any treatment effect was computed; it is a config value so
+   sensitivity can be reported, but the primary claim uses 30 minutes.
+2. **Outcome horizon**: the delayed outcome is within-session survival
+   (>= k further impressions after the step), never cross-session return.
+   Cross-day outcomes would entangle the randomized step with everything
+   else that happened to the user in between; within-session survival keeps
+   the causal window short enough that a single step's effect is plausibly
+   detectable, at the cost of scoping the claim to short-horizon credit.
+3. **Merged-log sessions**: sessions interleave randomized and standard
+   impressions because that is what actually happened to the user; dropping
+   standard rows would fabricate shorter sessions and corrupt the survival
+   outcome. The randomized-step analysis conditions only on `is_rand = 1`
+   rows, whose assignment is uniform regardless of their neighbors.
+
+The 4/08-4/21 standard-only window carries no randomized steps and exists in
+the prepared dataset solely as observational training material for phase 2.

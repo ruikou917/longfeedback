@@ -55,6 +55,7 @@ make data-lmsys    # optional: prepare a local LMSYS-Chat-1M snapshot (secondary
 make e1            # real-log delayed-outcome prediction on LMSYS (needs data-lmsys)
 make data-kuairand # optional: prepare a local KuaiRand-Pure snapshot (see docs/roadmap.md)
 make e6            # randomized bridge: confounded-log bias vs. true randomized rates (needs data-kuairand)
+make multiseed     # statistical protocol: gate_b + e5 across 5 seeds with bootstrap CIs
 ```
 
 Regenerate the paper-style report from the artifacts with

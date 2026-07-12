@@ -113,6 +113,92 @@ statistical estimate.
 - Logging-support regimes (broad/narrow) are declared in configuration; the
   optimizer interacts with the real world, and only the reward is learned.
 
+## Multi-seed statistical protocol contract (design doc 13.5)
+
+- The `multiseed` experiment reruns the unmodified Gate B and E5 pipelines
+  once per seed (five seeds in `configs/experiments/multiseed.yaml`; fewer
+  seeds still run but the decision block records
+  `protocol_seed_count_met: false`) and never alters what a single-seed run
+  computes — each per-seed run keeps its own auditable artifact directory,
+  manifest, and scientific-metrics hash.
+- Primary metrics are predeclared in the module and echoed in
+  `metric_conventions`: Gate B's per-family credit margin (`docm_credit`
+  credit Spearman minus the best baseline variant) and E5's per-regime
+  hacking gap for the `single` reward plus the paired KL/LCB mitigation
+  deltas. All other table entries are secondary and carry no robustness
+  verdict of their own.
+- Comparisons are paired within a seed (variants of one run share evaluation
+  seeds); the percentile bootstrap resamples per-seed paired differences with
+  a fixed resampling seed, so the reported intervals are reproducible.
+  Effect sizes are reported in native units (Spearman points, utility
+  points), never bare p-values.
+- A "robust" verdict requires the bootstrap CI to exclude zero in the
+  beneficial direction **and** the across-seed mean to meet the same
+  threshold the single-seed decision used; the per-family/per-regime rows are
+  aggregated with the same `min_winning_families` / any-regime rules as the
+  single-seed decisions rather than testing each row in isolation (the
+  multiple-comparisons stance is declared in `metric_conventions`).
+- Identical configurations and seeds produce identical scientific metrics,
+  including the bootstrap intervals.
+
+## E8 acceptance contract (real multi-step credit via randomized session steps)
+
+E8 is the project's attempt to test the core multi-step credit-assignment
+claim against *real* interventions: KuaiRand's randomly-inserted videos are
+genuine mid-session randomized steps embedded in real user trajectories, so
+their causal effect on *later-session* behavior is identifiable without a
+model. This contract was frozen before any treatment effect was computed;
+only outcome base rates (marginals, not effects) informed the horizon rule.
+
+- **Trajectory definition (ADR-012).** A session is one user's impressions,
+  merged across the random and standard logs, sorted by `time_ms`, split at
+  gaps > 30 minutes. A randomized step is a row with `is_rand = 1` (already
+  verified to match the source-file `logging_policy` tagging exactly).
+- **Delayed outcome.** For step `t` at horizon `k`:
+  `Y_k(t) = 1` iff the user consumes at least `k` further impressions in the
+  same session after `t`. This is pure future behavior — it contains no
+  engagement signal from step `t` itself — and it is defined for **every**
+  randomized step; conditioning on having subsequent steps would condition
+  on the outcome and is a contract violation. The **primary horizon is
+  k = 5**, adjusted deterministically (before any effect computation) to the
+  nearest of {1, 3, 5, 10} whose base rate over randomized steps lies in
+  [0.2, 0.8], as recorded in the prepared dataset's `stats.json`.
+- **Primary causal quantity (phase 1, the power gate).** The OLS slope of
+  `Y_k` on the z-scored `log1p(duration_ms)` of the randomly-inserted video,
+  over all randomized steps. Because the video is assigned uniformly at
+  random, this slope is an unconfounded intent-to-treat effect: does the
+  content of a single mid-session step causally change how long the session
+  survives? Inference is a percentile bootstrap clustered over **users**
+  (the design doc's hierarchical bootstrap; impressions within a user are
+  never treated as independent), with a fixed resampling seed.
+  `power_gate_pass` requires the CI to exclude zero **and**
+  |slope| ≥ 0.005 (half a percentage point of survival per standard
+  deviation of log-duration — smaller effects are statistically detectable
+  here but too weak to grade credit models against).
+- **Null protocol.** If the gate fails, E8 reports the estimated slope, its
+  CI, and the minimum detectable effect at ~80% power (2.8 × bootstrap SE),
+  and records `hypothesis_h8_delayed_step_effect` as
+  `refuted_at_this_granularity` — an honest, well-powered null about this
+  platform/granularity, not a failure to be tuned away. Phase 2 then must
+  not use duration as its grading axis.
+- **Secondary, no verdicts of their own:** per-duration-quintile survival
+  tables with CIs, the same slope at the non-primary horizons, and
+  video-type group contrasts. All secondary rows are reported in full.
+- **Phase 2 (model grading, gated on phase 1).** Capacity-matched sequence
+  models trained on **observational data only** (standard-log sessions, and
+  never any `is_rand = 1` step's assignment mechanism) produce per-step
+  credit estimates; these are graded against group-level randomized effects
+  on **held-out users'** randomized steps, against attribution baselines
+  (uniform, last-touch, immediate-engagement). The claim graded is exactly
+  Gate A/B's, transplanted: does the model's credit agree with interventional
+  ground truth — here real, not simulated?
+- **Scope honesty.** KuaiRand sessions are recommendation trajectories, not
+  conversations; a positive E8 validates the method's credit estimates
+  against real randomized interventions in *a* real sequential domain, not
+  in dialogue. Per-step ground truth for every observational step remains
+  unattainable in principle; E8's grading is group-level at randomized steps
+  only, and every claim must say so.
+
 ## E6 acceptance contract (randomized bridge)
 
 - E6 is the first real (non-simulated) data source licensed for causal claims,
