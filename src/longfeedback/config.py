@@ -424,6 +424,38 @@ class E8Config(StrictModel):
         return self
 
 
+class HeartStepsDataConfig(StrictModel):
+    """Pinned public HeartSteps V1 preparation settings for E9."""
+
+    input_dir: Path = Path("data/heartsteps-source")
+    output_dir: Path = Path("data/processed/heartsteps")
+    source_revision: str = "3016391de426116bdef41880d72bc8cd4b9b2477"
+    suggestions_filename: str = "suggestions.csv"
+    steps_filename: str = "jbsteps.csv"
+    users_filename: str = "users.csv"
+    suggestion_probability: float = Field(default=0.6, gt=0.0, lt=1.0)
+    max_decisions: int = Field(default=210, ge=35)
+    distal_week_decisions: int = Field(default=35, ge=5)
+    decisions_filename: str = "decisions.parquet"
+    manifest_filename: str = "source_manifest.json"
+    stats_filename: str = "stats.json"
+
+
+class E9Config(StrictModel):
+    """HeartSteps randomized proximal/distal causal-credit benchmark."""
+
+    name: Literal["e9"] = "e9"
+    processed_dir: Path = Path("data/processed/heartsteps")
+    decisions_filename: str = "decisions.parquet"
+    output_dir: Path = Path("artifacts/e9")
+    crossfit_folds: int = Field(default=5, ge=2)
+    ridge_alpha: float = Field(default=1.0, ge=0.0)
+    bootstrap: ClusterBootstrapSettings = ClusterBootstrapSettings()
+    metrics_filename: str = "metrics.json"
+    predictions_filename: str = "predictions.csv"
+    manifest_filename: str = "run_manifest.json"
+
+
 class GateBExperimentSettings(StrictModel):
     """Reproducibility settings for the Gate B experiment."""
 
@@ -733,6 +765,18 @@ def load_e8_config(path: Path) -> E8Config:
     """Load and validate an E8 YAML file."""
 
     return E8Config.model_validate(_load_yaml_mapping(path))
+
+
+def load_heartsteps_data_config(path: Path) -> HeartStepsDataConfig:
+    """Load and validate a HeartSteps V1 preparation YAML file."""
+
+    return HeartStepsDataConfig.model_validate(_load_yaml_mapping(path))
+
+
+def load_e9_config(path: Path) -> E9Config:
+    """Load and validate an E9 YAML file."""
+
+    return E9Config.model_validate(_load_yaml_mapping(path))
 
 
 def dump_resolved_config(config: StrictModel) -> dict[str, Any]:

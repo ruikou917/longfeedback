@@ -214,7 +214,7 @@ any effect computation — see "E8 acceptance contract" in
 `docs/scientific_contract.md` and ADR-012.
 
 Real phase-1 result (2026-07-12): all 2,622,668 impressions produced
-1,239,179 sessions and 1,186,059 randomized steps. The frozen base-rate rule
+1,239,180 sessions and 1,186,059 randomized steps. The frozen base-rate rule
 moved the primary horizon from k=5 (survival rate 0.156) to k=3 (0.272) before
 examining effects. The duration slope was +0.00054 survival probability per SD
 of log-duration, 95% user-cluster bootstrap CI [-0.00020, +0.00134]. The CI
@@ -223,8 +223,40 @@ threshold; the 80%-power MDE was only 0.00110. Verdict:
 `refuted_at_this_granularity`; duration-based phase 2 is blocked and will not
 be tuned back into significance.
 
+The null is credible, not a wiring artifact: an unregistered manipulation
+check (reported for validity only, never part of the frozen gate) shows the
+same randomized durations strongly move *immediate* behavior at the same
+steps (slope of log play-time on z log-duration ≈ +0.057; long_view
+≈ +0.006). A single mid-session content perturbation measurably changes the
+step itself yet leaves three-step session survival untouched. Read with E6
+(the same platform's confounded log misestimates per-video value by ≈0.20
+mean absolute bias), this sharpens the project's story: observational logs
+can look strongly informative while carrying essentially zero delayed
+interventional effect — per-step credit inferred observationally from such
+data would be mostly confounding.
+
 Next: E9 applies established distal causal-excursion methodology to the public
 HeartSteps micro-randomized trial. See `docs/real_credit_protocol.md`.
+
+### E9 — HeartSteps randomized longitudinal benchmark (done)
+
+The adapter pins public CC BY 4.0 HeartSteps V1 revision `3016391...`, removes
+declared travel periods, reconstructs 7,608 decisions from 37 participants,
+and preserves the known 0.6 suggestion probability. A source-semantic audit
+caught that `is.randomized` encodes assignment rather than eligibility;
+`avail` is the randomized-decision indicator and `send` is treatment, matching
+the published analysis. The observed treatment rate is 0.593 over 6,122
+available decisions.
+
+The 30-minute positive control reproduces the paper's direction and scale:
++0.109 log steps, approximately +11.5%, 95% user-cluster CI [-0.050, +0.259]
+on the log scale (the paper reported +14%, p=0.06). The cross-fitted distal
+Week-6 excursion effect is +65 average daily steps, CI [-196, +358]; its early
+period estimate is larger (+466) but also imprecise, CI [-39, +1063]. E9
+therefore validates the estimator pipeline against a real repeated-randomized
+positive control but does **not** authorize model grading on distal credit.
+The next evidentiary step is E10, a powered conversational micro-randomized
+trial with an objective delayed task outcome.
 
 ## Backlog
 

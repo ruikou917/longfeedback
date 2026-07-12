@@ -57,6 +57,8 @@ make data-kuairand # optional: prepare a local KuaiRand-Pure snapshot (see docs/
 make e6            # randomized bridge: confounded-log bias vs. true randomized rates (needs data-kuairand)
 make data-kuairand-sessions # rebuild complete multi-step KuaiRand sessions
 make e8            # randomized-step delayed-survival power gate (needs sessions)
+make data-heartsteps # prepare pinned public HeartSteps V1 micro-randomized trial
+make e9            # proximal positive control + distal randomized effect
 make multiseed     # statistical protocol: gate_b + e5 across 5 seeds with bootstrap CIs
 ```
 

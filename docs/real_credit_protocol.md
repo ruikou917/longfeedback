@@ -18,10 +18,9 @@ may triangulate it but cannot replace randomized identification.
    moves a later within-session outcome enough to grade models. The frozen
    duration axis produced a well-powered null, so model grading on that axis
    is prohibited.
-2. **E9, HeartSteps external benchmark.** Reproduce proximal weighted-centered
-   least squares and distal causal-excursion effects on a public longitudinal
-   micro-randomized trial. Participant-level cross-fitting and cluster
-   inference are mandatory.
+2. **E9, HeartSteps external benchmark.** The proximal randomized effect
+   reproduced at the published scale, validating the pipeline; the distal
+   effect remained imprecise, so model grading was not authorized.
 3. **E10, controlled conversational MRT.** Randomize a small, interpretable
    response-strategy action at eligible turns in real multi-turn tasks with an
    objective delayed terminal score. Log the candidate set, availability,

@@ -65,3 +65,19 @@ Before any real-data adapter is enabled:
   number.
 
 Dataset work cannot block the structural-world experiments (E0/Gate A).
+
+### HeartSteps V1 (public micro-randomized trial; E9)
+
+- **Access and license:** public GitHub release, CC BY 4.0, pinned to commit
+  `3016391de426116bdef41880d72bc8cd4b9b2477`; the manifest records checksums
+  for `suggestions.csv`, `jbsteps.csv`, and `users.csv`.
+- **Content:** deidentified decision records, wearable step counts, and survey
+  covariates for 37 participants. Raw data remains in the gitignored `data/`
+  tree even though redistribution is permitted with attribution.
+- **Causal role:** at every available decision point, suggestion delivery was
+  randomized with known probability 0.6. E9 uses `avail` for eligibility and
+  `send` for assignment; the misleadingly named source field `is.randomized`
+  must never be used as the inclusion indicator.
+- **Scope:** E9 estimates group-level proximal and distal excursion effects.
+  It does not expose an individual's missing counterfactual and is not a
+  conversational-agent dataset.

@@ -15,8 +15,10 @@ from longfeedback.config import (
     E5Config,
     E6Config,
     E8Config,
+    E9Config,
     GateAConfig,
     GateBConfig,
+    HeartStepsDataConfig,
     KuaiRandDataConfig,
     KuaiRandSessionsDataConfig,
     LmsysDataConfig,
@@ -27,8 +29,10 @@ from longfeedback.config import (
     load_e5_config,
     load_e6_config,
     load_e8_config,
+    load_e9_config,
     load_gate_a_config,
     load_gate_b_config,
+    load_heartsteps_data_config,
     load_kuairand_data_config,
     load_kuairand_sessions_data_config,
     load_lmsys_data_config,
@@ -76,7 +80,8 @@ def run_experiment(
         str,
         typer.Argument(
             help=(
-                "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'gate_a', 'gate_b', or 'multiseed'."
+                "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'gate_a', "
+                "'gate_b', or 'multiseed'."
             )
         ),
     ],
@@ -181,6 +186,11 @@ def run_experiment(
 
         e8_config = E8Config() if config_path is None else load_e8_config(config_path)
         result = run_e8(e8_config, output_dir=output_dir)
+    elif experiment_name == "e9":
+        from longfeedback.experiments.e9 import run_e9
+
+        e9_config = E9Config() if config_path is None else load_e9_config(config_path)
+        result = run_e9(e9_config, output_dir=output_dir)
     elif experiment_name == "multiseed":
         try:
             # multiseed itself is torch-free; importing gate_b checks that the
@@ -200,7 +210,7 @@ def run_experiment(
         result = run_multiseed(multiseed_config, output_dir=output_dir)
     else:
         raise typer.BadParameter(
-            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'gate_a', "
+            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'gate_a', "
             "'gate_b', or 'multiseed'",
             param_hint="name",
         )
@@ -212,7 +222,10 @@ def prepare_data(
     source: Annotated[
         str,
         typer.Argument(
-            help="Source dataset name; 'lmsys', 'wildchat', 'kuairand', or 'kuairand-sessions'."
+            help=(
+                "Source dataset name; 'lmsys', 'wildchat', 'kuairand', "
+                "'kuairand-sessions', or 'heartsteps'."
+            )
         ),
     ],
     config_path: Annotated[
@@ -247,9 +260,16 @@ def prepare_data(
     """Prepare a local dataset snapshot and print its statistics as JSON."""
 
     source_name = source.lower()
-    if source_name not in ("lmsys", "wildchat", "kuairand", "kuairand-sessions"):
+    if source_name not in (
+        "lmsys",
+        "wildchat",
+        "kuairand",
+        "kuairand-sessions",
+        "heartsteps",
+    ):
         raise typer.BadParameter(
-            "unknown source; expected 'lmsys', 'wildchat', 'kuairand', or 'kuairand-sessions'",
+            "unknown source; expected 'lmsys', 'wildchat', 'kuairand', "
+            "'kuairand-sessions', or 'heartsteps'",
             param_hint="source",
         )
     try:
@@ -283,7 +303,7 @@ def prepare_data(
             stats = prepare_kuairand(
                 kuairand_config, input_dir=input_dir, output_dir=output_dir
             ).stats
-        else:
+        elif source_name == "kuairand-sessions":
             from longfeedback.data.kuairand_sessions import prepare_kuairand_sessions
 
             sessions_config = (
@@ -293,6 +313,17 @@ def prepare_data(
             )
             stats = prepare_kuairand_sessions(
                 sessions_config, input_dir=input_dir, output_dir=output_dir
+            ).stats
+        else:
+            from longfeedback.data.heartsteps import prepare_heartsteps
+
+            heartsteps_config = (
+                HeartStepsDataConfig()
+                if config_path is None
+                else load_heartsteps_data_config(config_path)
+            )
+            stats = prepare_heartsteps(
+                heartsteps_config, input_dir=input_dir, output_dir=output_dir
             ).stats
     except ImportError as error:
         raise typer.BadParameter(

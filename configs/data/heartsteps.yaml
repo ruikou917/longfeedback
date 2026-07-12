@@ -1,0 +1,12 @@
+input_dir: data/heartsteps-source
+output_dir: data/processed/heartsteps
+source_revision: 3016391de426116bdef41880d72bc8cd4b9b2477
+suggestions_filename: suggestions.csv
+steps_filename: jbsteps.csv
+users_filename: users.csv
+suggestion_probability: 0.6
+max_decisions: 210
+distal_week_decisions: 35
+decisions_filename: decisions.parquet
+manifest_filename: source_manifest.json
+stats_filename: stats.json

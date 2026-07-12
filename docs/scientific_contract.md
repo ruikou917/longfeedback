@@ -199,6 +199,23 @@ only outcome base rates (marginals, not effects) informed the horizon rule.
   unattainable in principle; E8's grading is group-level at randomized steps
   only, and every claim must say so.
 
+## E9 acceptance contract (HeartSteps randomized longitudinal benchmark)
+
+- The target is a group-level causal excursion effect under the known 0.6/0.4
+  experimental policy, never an individual counterfactual.
+- `avail` defines eligible randomized decisions and `send` defines treatment.
+  The source field `is.randomized` is not an inclusion indicator; an observed
+  treatment rate far from 0.6 is a hard preprocessing failure.
+- The 30-minute log-step effect is a positive-control reproduction. The distal
+  outcome is average daily Jawbone steps over the final 35 decision points;
+  all earlier eligible decisions receive that delayed participant outcome.
+- Nuisance outcome regressions are cross-fitted by participant. Inference
+  resamples participants, never decision rows. Travel periods declared in the
+  source are excluded following the published preprocessing.
+- Distal model grading is authorized only if a predeclared distal excursion
+  effect excludes zero. A proximal reproduction alone validates the analysis
+  machinery but does not support the project's delayed-credit model claim.
+
 ## E6 acceptance contract (randomized bridge)
 
 - E6 is the first real (non-simulated) data source licensed for causal claims,
