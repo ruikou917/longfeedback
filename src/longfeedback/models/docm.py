@@ -9,7 +9,7 @@ capacity-matched by construction.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -198,6 +198,7 @@ class DelayedOutcomeCreditModel:
     reference_action: int = 0
     architecture: EncoderArchitecture = field(default_factory=EncoderArchitecture)
     loss_weights: DocmLossWeights = field(default_factory=DocmLossWeights)
+    outcome_type: Literal["binary", "continuous"] = "binary"
     seed: int = 0
 
     def __post_init__(self) -> None:
@@ -235,17 +236,23 @@ class DelayedOutcomeCreditModel:
         components: dict[str, float] = {}
         total = torch.zeros((), dtype=torch.float32)
 
-        outcome_loss = nn.functional.binary_cross_entropy_with_logits(
-            outputs["outcome_logit"], outcomes
-        )
+        if self.outcome_type == "binary":
+            outcome_loss = nn.functional.binary_cross_entropy_with_logits(
+                outputs["outcome_logit"], outcomes
+            )
+        else:
+            outcome_loss = torch.mean(torch.square(outputs["outcome_logit"] - outcomes))
         components["outcome"] = float(outcome_loss.detach())
         total = total + weights.outcome * outcome_loss
 
         if weights.prefix > 0.0:
             prefix_targets = outcomes.unsqueeze(1).expand_as(outputs["prefix_logits"])
-            prefix_loss = nn.functional.binary_cross_entropy_with_logits(
-                outputs["prefix_logits"], prefix_targets
-            )
+            if self.outcome_type == "binary":
+                prefix_loss = nn.functional.binary_cross_entropy_with_logits(
+                    outputs["prefix_logits"], prefix_targets
+                )
+            else:
+                prefix_loss = torch.mean(torch.square(outputs["prefix_logits"] - prefix_targets))
             components["prefix"] = float(prefix_loss.detach())
             total = total + weights.prefix * prefix_loss
 
@@ -253,12 +260,13 @@ class DelayedOutcomeCreditModel:
             # Per-step rewards are adjacent prefix-value differences, so the
             # telescoping identity holds exactly; this term instead ties the
             # final prefix value to the outcome head.
-            telescoping_loss = torch.mean(
-                torch.square(
-                    torch.sigmoid(outputs["prefix_logits"][:, -1])
-                    - torch.sigmoid(outputs["outcome_logit"])
-                )
-            )
+            if self.outcome_type == "binary":
+                prefix_final = torch.sigmoid(outputs["prefix_logits"][:, -1])
+                outcome_final = torch.sigmoid(outputs["outcome_logit"])
+            else:
+                prefix_final = outputs["prefix_logits"][:, -1]
+                outcome_final = outputs["outcome_logit"]
+            telescoping_loss = torch.mean(torch.square(prefix_final - outcome_final))
             components["telescoping"] = float(telescoping_loss.detach())
             total = total + weights.telescoping * telescoping_loss
 
@@ -350,14 +358,28 @@ class DelayedOutcomeCreditModel:
             return self._forward_with_logged_values(observations, actions, responses)
 
     def predict_outcome_probability(self, dataset: SequenceDataset) -> FloatArray:
+        if self.outcome_type != "binary":
+            raise ValueError("outcome probabilities require binary outcome mode")
         outputs = self._predict(dataset)
         return np.asarray(torch.sigmoid(outputs["outcome_logit"]).numpy(), dtype=np.float64)
+
+    def predict_outcome(self, dataset: SequenceDataset) -> FloatArray:
+        """Return a probability in binary mode or the raw continuous prediction."""
+
+        outputs = self._predict(dataset)
+        values = outputs["outcome_logit"]
+        if self.outcome_type == "binary":
+            values = torch.sigmoid(values)
+        return np.asarray(values.numpy(), dtype=np.float64)
 
     def predict_prefix_values(self, dataset: SequenceDataset) -> FloatArray:
         """Return prefix-value probabilities ``V_0..V_T`` from the prefix head."""
 
         outputs = self._predict(dataset)
-        return np.asarray(torch.sigmoid(outputs["prefix_logits"]).numpy(), dtype=np.float64)
+        values = outputs["prefix_logits"]
+        if self.outcome_type == "binary":
+            values = torch.sigmoid(values)
+        return np.asarray(values.numpy(), dtype=np.float64)
 
     def predict_outcome_head_prefix_values(self, dataset: SequenceDataset) -> FloatArray:
         """Evaluate the terminal-outcome head on every prefix boundary.
@@ -367,7 +389,10 @@ class DelayedOutcomeCreditModel:
         """
 
         outputs = self._predict(dataset)
-        return np.asarray(torch.sigmoid(outputs["outcome_prefix_logits"]).numpy(), dtype=np.float64)
+        values = outputs["outcome_prefix_logits"]
+        if self.outcome_type == "binary":
+            values = torch.sigmoid(values)
+        return np.asarray(values.numpy(), dtype=np.float64)
 
     def predict_action_values(self, dataset: SequenceDataset) -> FloatArray:
         outputs = self._predict(dataset)

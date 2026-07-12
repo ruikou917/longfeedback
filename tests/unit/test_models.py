@@ -74,6 +74,34 @@ def test_fit_and_predict_are_seed_deterministic() -> None:
     )
 
 
+def test_continuous_outcome_mode_returns_raw_predictions() -> None:
+    dataset = _dataset()
+    continuous = SequenceDataset(
+        observations=dataset.observations,
+        actions=dataset.actions,
+        responses=dataset.responses,
+        outcomes=np.linspace(-1.0, 1.0, dataset.episodes),
+    )
+    model = DelayedOutcomeCreditModel(
+        observation_dim=4,
+        n_actions=3,
+        horizon=5,
+        architecture=_ARCHITECTURE,
+        loss_weights=variant_loss_weights("docm_outcome"),
+        outcome_type="continuous",
+        seed=2,
+    )
+    model.fit(continuous, training=_TRAINING)
+
+    assert model.predict_outcome(continuous).shape == (continuous.episodes,)
+    assert model.predict_outcome_head_prefix_values(continuous).shape == (
+        continuous.episodes,
+        continuous.horizon + 1,
+    )
+    with pytest.raises(ValueError, match="binary outcome mode"):
+        model.predict_outcome_probability(continuous)
+
+
 def test_heads_are_causal_at_every_step() -> None:
     dataset = _dataset()
     model = _model("docm_prefix")
