@@ -337,6 +337,93 @@ class KuaiRandDataConfig(StrictModel):
         return self
 
 
+class KuaiRandSessionsDataConfig(StrictModel):
+    """Configuration for preparing KuaiRand *session* trajectories (E8).
+
+    Unlike ``KuaiRandDataConfig`` (E6, single-step, row-capped), this adapter
+    always reads every row: sessions must be complete or the survival outcome
+    is corrupted (ADR-012). Sessions merge the random and standard logs per
+    user, sorted by time, split at gaps over ``session_gap_minutes``.
+    """
+
+    input_dir: Path = Path("data/kuairand-data")
+    output_dir: Path = Path("data/processed/kuairand_sessions")
+    log_random_files: tuple[str, ...] = ("log_random_4_22_to_5_08_pure.csv",)
+    log_standard_files: tuple[str, ...] = (
+        "log_standard_4_08_to_4_21_pure.csv",
+        "log_standard_4_22_to_5_08_pure.csv",
+    )
+    video_features_filename: str = "video_features_basic_pure.csv"
+    session_gap_minutes: float = Field(default=30.0, gt=0.0)
+    seed: int = 0
+    train_fraction: float = Field(default=0.8, gt=0.0, lt=1.0)
+    validation_fraction: float = Field(default=0.1, ge=0.0, lt=1.0)
+    # Survival base rates at these horizons are recorded in stats.json; the
+    # E8 contract's deterministic primary-horizon rule reads them, so they
+    # are outcome marginals computed before any treatment effect.
+    survival_horizons: tuple[int, ...] = (1, 3, 5, 10)
+    sessions_filename: str = "sessions.parquet"
+    manifest_filename: str = "source_manifest.json"
+    stats_filename: str = "stats.json"
+
+    @model_validator(mode="after")
+    def validate_sessions_config(self) -> KuaiRandSessionsDataConfig:
+        if self.train_fraction + self.validation_fraction >= 1.0:
+            raise ValueError("train and validation fractions must leave room for test")
+        if not self.log_random_files:
+            raise ValueError("at least one log_random file is required for randomized steps")
+        if not self.survival_horizons or any(k < 1 for k in self.survival_horizons):
+            raise ValueError("survival horizons must be positive")
+        return self
+
+
+class ClusterBootstrapSettings(StrictModel):
+    """Percentile bootstrap clustered over users (hierarchical, design doc 13.5)."""
+
+    resamples: int = Field(default=2_000, ge=100)
+    confidence: float = Field(default=0.95, gt=0.5, lt=1.0)
+    seed: int = 0
+
+
+class E8DecisionSettings(StrictModel):
+    """Thresholds for the E8 phase-1 power gate (frozen in the contract)."""
+
+    # Half a percentage point of survival per SD of log-duration; smaller
+    # effects are detectable at this sample size but too weak to grade
+    # credit models against.
+    min_abs_slope: float = Field(default=0.005, gt=0.0)
+    # Minimum detectable effect multiplier at ~80% power (2.8 x bootstrap SE).
+    mde_z: float = Field(default=2.8, gt=0.0)
+
+
+class E8Config(StrictModel):
+    """Phase-1 configuration for E8 (randomized-session-step power gate)."""
+
+    name: Literal["e8"] = "e8"
+    processed_dir: Path = Path("data/processed/kuairand_sessions")
+    sessions_filename: str = "sessions.parquet"
+    output_dir: Path = Path("artifacts/e8")
+    survival_horizons: tuple[int, ...] = (1, 3, 5, 10)
+    primary_horizon: int = Field(default=5, ge=1)
+    # The primary horizon is adjusted deterministically (before any effect
+    # computation) to the nearest configured horizon whose randomized-step
+    # base rate lies inside this window.
+    base_rate_low: float = Field(default=0.2, gt=0.0, lt=0.5)
+    base_rate_high: float = Field(default=0.8, gt=0.5, lt=1.0)
+    duration_quantile_bins: int = Field(default=5, ge=2, le=10)
+    bootstrap: ClusterBootstrapSettings = ClusterBootstrapSettings()
+    decision: E8DecisionSettings = E8DecisionSettings()
+    metrics_filename: str = "metrics.json"
+    predictions_filename: str = "predictions.csv"
+    manifest_filename: str = "run_manifest.json"
+
+    @model_validator(mode="after")
+    def primary_horizon_configured(self) -> E8Config:
+        if self.primary_horizon not in self.survival_horizons:
+            raise ValueError("primary_horizon must be one of survival_horizons")
+        return self
+
+
 class GateBExperimentSettings(StrictModel):
     """Reproducibility settings for the Gate B experiment."""
 
@@ -634,6 +721,18 @@ def load_multiseed_config(path: Path) -> MultiSeedConfig:
     """Load and validate a multi-seed protocol YAML file."""
 
     return MultiSeedConfig.model_validate(_load_yaml_mapping(path))
+
+
+def load_kuairand_sessions_data_config(path: Path) -> KuaiRandSessionsDataConfig:
+    """Load and validate a KuaiRand sessions data-preparation YAML file."""
+
+    return KuaiRandSessionsDataConfig.model_validate(_load_yaml_mapping(path))
+
+
+def load_e8_config(path: Path) -> E8Config:
+    """Load and validate an E8 YAML file."""
+
+    return E8Config.model_validate(_load_yaml_mapping(path))
 
 
 def dump_resolved_config(config: StrictModel) -> dict[str, Any]:

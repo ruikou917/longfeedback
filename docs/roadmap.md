@@ -198,7 +198,7 @@ rubric since it fixes what "reward" means for this experiment's claims.
 Implementation should wait for that; nothing about it needs a slow
 data-download turnaround the way E6 does, so once scoped it should move fast.
 
-### E8 — real multi-step credit via randomized session steps (in progress)
+### E8 — real multi-step credit via randomized session steps (phase 1 done: null)
 
 The core credit-assignment claim has only synthetic evidence (Gate A/B);
 real logs never reveal per-step counterfactuals. E8 attacks the strongest
@@ -212,6 +212,19 @@ phase 2 (gated on phase 1) grades observationally-trained credit models
 against those randomized effects on held-out users. Contract frozen before
 any effect computation — see "E8 acceptance contract" in
 `docs/scientific_contract.md` and ADR-012.
+
+Real phase-1 result (2026-07-12): all 2,622,668 impressions produced
+1,239,179 sessions and 1,186,059 randomized steps. The frozen base-rate rule
+moved the primary horizon from k=5 (survival rate 0.156) to k=3 (0.272) before
+examining effects. The duration slope was +0.00054 survival probability per SD
+of log-duration, 95% user-cluster bootstrap CI [-0.00020, +0.00134]. The CI
+includes zero and the estimate is far below the predeclared 0.005 relevance
+threshold; the 80%-power MDE was only 0.00110. Verdict:
+`refuted_at_this_granularity`; duration-based phase 2 is blocked and will not
+be tuned back into significance.
+
+Next: E9 applies established distal causal-excursion methodology to the public
+HeartSteps micro-randomized trial. See `docs/real_credit_protocol.md`.
 
 ## Backlog
 

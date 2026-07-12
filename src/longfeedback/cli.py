@@ -14,9 +14,11 @@ from longfeedback.config import (
     E1Config,
     E5Config,
     E6Config,
+    E8Config,
     GateAConfig,
     GateBConfig,
     KuaiRandDataConfig,
+    KuaiRandSessionsDataConfig,
     LmsysDataConfig,
     MultiSeedConfig,
     WildChatDataConfig,
@@ -24,9 +26,11 @@ from longfeedback.config import (
     load_e1_config,
     load_e5_config,
     load_e6_config,
+    load_e8_config,
     load_gate_a_config,
     load_gate_b_config,
     load_kuairand_data_config,
+    load_kuairand_sessions_data_config,
     load_lmsys_data_config,
     load_multiseed_config,
     load_wildchat_data_config,
@@ -71,7 +75,9 @@ def run_experiment(
     name: Annotated[
         str,
         typer.Argument(
-            help=("Experiment name: 'e0', 'e1', 'e5', 'e6', 'gate_a', 'gate_b', or 'multiseed'.")
+            help=(
+                "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'gate_a', 'gate_b', or 'multiseed'."
+            )
         ),
     ],
     config_path: Annotated[
@@ -163,6 +169,18 @@ def run_experiment(
 
         e6_config = E6Config() if config_path is None else load_e6_config(config_path)
         result = run_e6(e6_config, output_dir=output_dir)
+    elif experiment_name == "e8":
+        try:
+            from longfeedback.experiments.e8 import run_e8
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e8 experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        e8_config = E8Config() if config_path is None else load_e8_config(config_path)
+        result = run_e8(e8_config, output_dir=output_dir)
     elif experiment_name == "multiseed":
         try:
             # multiseed itself is torch-free; importing gate_b checks that the
@@ -182,8 +200,8 @@ def run_experiment(
         result = run_multiseed(multiseed_config, output_dir=output_dir)
     else:
         raise typer.BadParameter(
-            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'gate_a', 'gate_b', "
-            "or 'multiseed'",
+            "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'gate_a', "
+            "'gate_b', or 'multiseed'",
             param_hint="name",
         )
     typer.echo(json.dumps(result.metrics, indent=2, sort_keys=True))
@@ -193,7 +211,9 @@ def run_experiment(
 def prepare_data(
     source: Annotated[
         str,
-        typer.Argument(help="Source dataset name; 'lmsys', 'wildchat', or 'kuairand'."),
+        typer.Argument(
+            help="Source dataset name; 'lmsys', 'wildchat', 'kuairand', or 'kuairand-sessions'."
+        ),
     ],
     config_path: Annotated[
         Path | None,
@@ -227,9 +247,10 @@ def prepare_data(
     """Prepare a local dataset snapshot and print its statistics as JSON."""
 
     source_name = source.lower()
-    if source_name not in ("lmsys", "wildchat", "kuairand"):
+    if source_name not in ("lmsys", "wildchat", "kuairand", "kuairand-sessions"):
         raise typer.BadParameter(
-            "unknown source; expected 'lmsys', 'wildchat', or 'kuairand'", param_hint="source"
+            "unknown source; expected 'lmsys', 'wildchat', 'kuairand', or 'kuairand-sessions'",
+            param_hint="source",
         )
     try:
         stats: dict[str, Any]
@@ -251,7 +272,7 @@ def prepare_data(
             stats = prepare_wildchat(
                 wildchat_config, input_dir=input_dir, output_dir=output_dir
             ).stats
-        else:
+        elif source_name == "kuairand":
             from longfeedback.data.kuairand import prepare_kuairand
 
             kuairand_config = (
@@ -261,6 +282,17 @@ def prepare_data(
             )
             stats = prepare_kuairand(
                 kuairand_config, input_dir=input_dir, output_dir=output_dir
+            ).stats
+        else:
+            from longfeedback.data.kuairand_sessions import prepare_kuairand_sessions
+
+            sessions_config = (
+                KuaiRandSessionsDataConfig()
+                if config_path is None
+                else load_kuairand_sessions_data_config(config_path)
+            )
+            stats = prepare_kuairand_sessions(
+                sessions_config, input_dir=input_dir, output_dir=output_dir
             ).stats
     except ImportError as error:
         raise typer.BadParameter(
