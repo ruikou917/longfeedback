@@ -254,6 +254,60 @@ only outcome base rates (marginals, not effects) informed the horizon rule.
   behavioral claim. It does not establish conversational transfer, long-term
   welfare, or exact unit-level credit.
 
+### E10-HS-Day Phase-2 model-grading contract (frozen after gate, before fitting)
+
+- **Inputs and endpoint.** The 1,517 complete pseudo-days from Phase 1 are
+  split by participant. At each of five positions the model sees only
+  pre-action availability, `log1p` prior-30-minute steps, home/work context,
+  study day, position, and the logged send/no-send action. The response
+  channel is fixed to zero: none of the five component `jbsteps30` outcomes
+  is exposed as an intermediate input or reward. The sole outcome is the
+  continuous terminal score frozen in Phase 1.
+- **Cross-fitting.** Three deterministic participant folds are formed by the
+  repository SHA-256 user hash. Each fold is held out once. Outcome
+  normalization, nuisance regressions, affine calibration, and every learned
+  parameter are fit using the other two folds only.
+- **Capacity-matched ladder.** `docm_outcome`, `docm_prefix`, and
+  `docm_credit` use the identical 64-dimensional, two-layer, four-head causal
+  transformer and the identical 40-epoch optimizer budget. All variants
+  contain all heads and must have exactly equal parameter counts. The model
+  is run in continuous-outcome mode. Outcome-only attribution is the change
+  in the terminal head across adjacent prefix boundaries; prefix/RUDDER
+  attribution is the analogous prefix-value change; credit attribution is
+  the sent-action value minus the no-send action value.
+- **Randomized credit supervision.** Within each training split, ridge arm
+  regressions use only pre-action features and are themselves cross-fitted by
+  participant. At available sent decisions, the training target is
+  `xi = (Y - (1-p) mu1 - p mu0) / p`, with `p=0.6` and terminal score `Y`.
+  Held-out `xi` targets use nuisance regressions fit only on training
+  participants. Under randomization, conditional on a sent action, `xi` is
+  centered at the send-versus-no-send terminal excursion effect. No held-out
+  target contributes to training or calibration.
+- **Primary paired tests.** For each variant and fold, one affine map from
+  raw attribution to `xi` is fit on training participants. On held-out
+  available sent decisions, squared errors to the common `xi` target are
+  compared within decision. Participant-cluster bootstrap 95% CIs estimate
+  the mean paired MSE gaps (outcome-only minus credit and prefix minus
+  credit). Seed 0 is the predeclared primary run; both gaps must be positive
+  with CIs excluding zero.
+- **Outcome-quality precondition.** Held-out terminal-score RMSE is computed
+  after reversing training-fold standardization. The absolute RMSE
+  difference between credit-supervised and outcome-only must be at most 0.05
+  terminal-score units. This prevents a credit win obtained from a materially
+  different terminal predictor.
+- **Robustness and decision.** Training seeds are 0--4 with fixed folds. For
+  each of both baseline comparisons, at least four seeds must have a positive
+  paired gap and no seed may have a CI excluding zero in the negative
+  direction. Phase 2 passes only if parameter counts match, the outcome
+  precondition passes, both seed-0 primary tests pass, and both robustness
+  checks pass. All other profiles are descriptive and cannot rescue a fail.
+- **Interpretation.** A pass is publishable real-data support that explicit
+  randomized-credit supervision improves recovery of group-level causal
+  excursion effects from a delayed terminal outcome at fixed capacity in a
+  real sequential behavioral domain. It remains an estimation result in 37
+  participants, not proof of individual counterfactual credit, policy
+  improvement, conversational transfer, or long-term welfare.
+
 ## E6 acceptance contract (randomized bridge)
 
 - E6 is the first real (non-simulated) data source licensed for causal claims,
