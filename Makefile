@@ -1,4 +1,4 @@
-.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 e5 e6 e8 e9 e10-hs-day e10-hs-day-phase2 gate-a gate-a-smoke gate-b multiseed data-heartsteps data-lmsys data-kuairand data-kuairand-sessions data-wildchat e1-wildchat
+.PHONY: bootstrap bootstrap-core format lint typecheck test qa e0 e1 e5 e6 e8 e9 e10-hs-day e10-hs-day-phase2 e11-smoke e11 e12-smoke e12 gate-a gate-a-smoke gate-b multiseed data-heartsteps data-lmsys data-kuairand data-kuairand-sessions data-wildchat e1-wildchat
 
 # Full research environment (torch included); required for gate-a and mypy.
 bootstrap:
@@ -78,3 +78,18 @@ e5:
 # bootstrap confidence intervals on the predeclared primary metrics.
 multiseed:
 	uv run --no-sync longfeedback experiment run multiseed --config configs/experiments/multiseed.yaml
+
+# E11/E12 (docs/e11_e12_alfworld_design.md): smoke targets run on the fake
+# environment with CPU-only actors; the non-smoke targets expect ALFWorld
+# data plus the cloud-GPU actor step.
+e11-smoke:
+	uv run --no-sync longfeedback experiment run e11_alfworld_credit --config configs/experiments/e11_alfworld_credit_smoke.yaml
+
+e11:
+	uv run --no-sync longfeedback experiment run e11_alfworld_credit --config configs/experiments/e11_alfworld_credit.yaml
+
+e12-smoke:
+	uv run --no-sync longfeedback experiment run e12_alfworld_online --config configs/experiments/e12_alfworld_online_smoke.yaml
+
+e12:
+	uv run --no-sync longfeedback experiment run e12_alfworld_online --config configs/experiments/e12_alfworld_online.yaml

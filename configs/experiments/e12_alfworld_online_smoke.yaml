@@ -1,0 +1,67 @@
+# E12 CPU smoke: two synchronous iterations of every method on the fake world
+# with the trainable softmax actor standing in for the LoRA LLM.
+name: e12_alfworld_online
+seed: 0
+seeds: [0]
+output_dir: artifacts/e12_alfworld_online_smoke
+
+environment:
+  backend: fake
+  max_steps: 8
+  fake:
+    train_games: 8
+    valid_seen_games: 4
+    valid_unseen_games: 4
+    code_length: 2
+    noop_actions: 2
+    trap_actions: 1
+    max_steps: 8
+
+methods:
+  - frozen_actor
+  - terminal_grpo
+  - prefix_group
+  - c3_group
+  - gigpo
+  - longfeedback_group
+
+online:
+  iterations: 2
+  base_episodes_per_iteration: 8
+  iteration_token_budget: 120000
+  max_extra_episodes: 12
+  branch_states_per_episode: 1
+  uniform_selection_weight: 0.5
+  full_enumeration_limit: 4
+  top_actor_candidates: 2
+  random_candidates: 1
+  branch_rollouts_per_action: 2
+  unforced_rollouts: 3
+  max_policy_lag: 0
+  evaluation_interval: 1
+
+actor_training:
+  ratio_clip: 0.2
+  update_epochs: 2
+  learning_rate: 0.05
+  kl_coefficient: 0.01
+  entropy_coefficient: 0.005
+  max_grad_norm: 1.0
+
+critic:
+  embedding_dim: 32
+  d_model: 32
+  n_layers: 1
+  n_heads: 4
+  dropout: 0.0
+  action_mlp_hidden: 32
+  epochs: 4
+  batch_size: 32
+  learning_rate: 0.003
+  weight_decay: 0.01
+  grad_clip: 1.0
+  policy_center_tolerance: 1.0e-5
+
+decision:
+  minimum_success_lift: 0.0
+  minimum_positive_seeds: 1

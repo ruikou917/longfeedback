@@ -1,0 +1,82 @@
+# E11 pilot profile against real text-only ALFWorld (design section 7.6).
+#
+# NOT a frozen confirmatory contract. The cloud-GPU step must (1) swap the
+# mock actor for the pinned LLM candidate actor once its wiring is validated,
+# (2) point data_dir at downloaded ALFWorld data, and (3) replace the
+# thresholds only by committing a reviewed contract before full-run results
+# are inspected.
+name: e11_alfworld_credit
+seed: 0
+output_dir: artifacts/e11_alfworld_credit
+
+environment:
+  backend: alfworld_subprocess
+  data_dir: data/alfworld
+  max_steps: 50
+  request_timeout_seconds: 120.0
+
+actor:
+  type: mock  # placeholder until the pinned LLM actor is validated on GPU
+  seed: 7
+  temperature: 1.0
+  noise_scale: 0.4
+  prompt_noise_scale: 0.2
+  verb_bias: {}
+
+collection:
+  base_episodes: 200
+  calibration_episodes: 50
+  reference_episodes: 50
+  branch_states_per_episode: 2
+  uniform_selection_weight: 0.5
+  full_enumeration_limit: 8
+  top_actor_candidates: 2
+  random_candidates: 1
+  train_rollouts_per_action: 4
+  unforced_rollouts: 32
+  child_direct_value_fraction: 0.25
+  child_unforced_rollouts: 16
+  calibration_rollouts_per_action: 32
+  reference_rollouts_per_action: 32
+  replay_audit_prefixes: 1000
+
+model:
+  embedding_dim: 64
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.0
+  action_mlp_hidden: 128
+  target_network_ema: 0.99
+  policy_center_tolerance: 1.0e-6
+
+uncertainty:
+  members: 5
+  target_coverage: 0.9
+
+training:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 40
+  batch_size: 64
+  learning_rate: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+
+decision:
+  actor_success_min: 0.10
+  actor_success_max: 0.90
+  reference_median_se_max: 0.05
+  informative_q_spread: 0.10
+  informative_state_fraction_min: 0.30
+  minimum_reference_states: 50
+  regret_relative_improvement: 0.10
+  outcome_brier_tolerance: 0.02
+  minimum_positive_seeds: 4
+  bootstrap_resamples: 2000
+  familywise_confidence: 0.95
+  uncertainty_coverage_tolerance: 0.03
+
+budget:
+  max_actor_forward_tokens: 2000000000
+  max_environment_steps: 20000000
+  max_wall_time_seconds: 172800

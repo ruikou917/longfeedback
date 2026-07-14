@@ -1,0 +1,64 @@
+# E12 pilot profile against real text-only ALFWorld.
+#
+# NOT a frozen confirmatory contract. The cloud-GPU step swaps the trainable
+# softmax stand-in for the pinned LoRA LLM actor; iteration counts and the
+# token budget must be frozen from measured pilot cost before a locked run.
+name: e12_alfworld_online
+seed: 0
+seeds: [0, 1, 2, 3, 4]
+output_dir: artifacts/e12_alfworld_online
+
+environment:
+  backend: alfworld_subprocess
+  data_dir: data/alfworld
+  max_steps: 50
+  request_timeout_seconds: 120.0
+
+methods:
+  - frozen_actor
+  - terminal_grpo
+  - prefix_group
+  - c3_group
+  - gigpo
+  - longfeedback_group
+
+online:
+  iterations: 10
+  base_episodes_per_iteration: 32
+  iteration_token_budget: 4000000
+  max_extra_episodes: 64
+  branch_states_per_episode: 2
+  uniform_selection_weight: 0.5
+  full_enumeration_limit: 8
+  top_actor_candidates: 2
+  random_candidates: 1
+  branch_rollouts_per_action: 4
+  unforced_rollouts: 8
+  max_policy_lag: 0
+  evaluation_interval: 2
+
+actor_training:
+  ratio_clip: 0.2
+  update_epochs: 2
+  learning_rate: 0.01
+  kl_coefficient: 0.01
+  entropy_coefficient: 0.005
+  max_grad_norm: 1.0
+
+critic:
+  embedding_dim: 64
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.0
+  action_mlp_hidden: 128
+  epochs: 20
+  batch_size: 64
+  learning_rate: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  policy_center_tolerance: 1.0e-5
+
+decision:
+  minimum_success_lift: 0.03
+  minimum_positive_seeds: 4

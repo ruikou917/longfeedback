@@ -1,0 +1,87 @@
+# E11 CPU smoke: full pipeline on the deterministic fake world + mock actor.
+name: e11_alfworld_credit
+seed: 0
+output_dir: artifacts/e11_alfworld_credit_smoke
+
+environment:
+  backend: fake
+  max_steps: 8
+  fake:
+    train_games: 10
+    valid_seen_games: 5
+    valid_unseen_games: 5
+    code_length: 3
+    noop_actions: 2
+    trap_actions: 1
+    max_steps: 8
+
+actor:
+  type: mock
+  seed: 7
+  temperature: 1.0
+  noise_scale: 0.4
+  prompt_noise_scale: 0.2
+  # Mild advance-verb preference keeps pilot success inside [0.10, 0.90].
+  verb_bias:
+    press: 0.9
+    pull: 0.9
+    smash: -0.9
+    yank: -0.9
+
+collection:
+  base_episodes: 12
+  calibration_episodes: 6
+  reference_episodes: 6
+  branch_states_per_episode: 2
+  uniform_selection_weight: 0.5
+  full_enumeration_limit: 4
+  top_actor_candidates: 2
+  random_candidates: 1
+  train_rollouts_per_action: 3
+  unforced_rollouts: 4
+  child_direct_value_fraction: 0.5
+  child_unforced_rollouts: 3
+  calibration_rollouts_per_action: 8
+  reference_rollouts_per_action: 16
+  replay_audit_prefixes: 64
+
+model:
+  embedding_dim: 32
+  d_model: 32
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.0
+  action_mlp_hidden: 32
+  target_network_ema: 0.9
+  policy_center_tolerance: 1.0e-5
+
+uncertainty:
+  members: 3
+  target_coverage: 0.9
+
+training:
+  seeds: [0, 1]
+  epochs: 8
+  batch_size: 32
+  learning_rate: 0.003
+  weight_decay: 0.01
+  grad_clip: 1.0
+
+decision:
+  actor_success_min: 0.10
+  actor_success_max: 0.90
+  reference_median_se_max: 0.15
+  informative_q_spread: 0.10
+  informative_state_fraction_min: 0.30
+  minimum_reference_states: 4
+  regret_relative_improvement: 0.10
+  outcome_brier_tolerance: 0.05
+  minimum_positive_seeds: 2
+  bootstrap_resamples: 200
+  familywise_confidence: 0.95
+  uncertainty_coverage_tolerance: 0.10
+
+budget:
+  max_actor_forward_tokens: 20000000
+  max_environment_steps: 2000000
+  max_wall_time_seconds: 1800

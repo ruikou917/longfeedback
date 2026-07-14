@@ -83,7 +83,8 @@ def run_experiment(
         typer.Argument(
             help=(
                 "Experiment name: 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'e9b', "
-                "'gate_a', 'gate_b', or 'multiseed'."
+                "'e11_alfworld_credit', 'e12_alfworld_online', 'gate_a', "
+                "'gate_b', or 'multiseed'."
             )
         ),
     ],
@@ -205,6 +206,38 @@ def run_experiment(
 
         e9b_config = E9bConfig() if config_path is None else load_e9b_config(config_path)
         result = run_e9b(e9b_config, output_dir=output_dir)
+    elif experiment_name in ("e11", "e11_alfworld_credit"):
+        try:
+            from longfeedback.experiments.e11_alfworld_credit import (
+                load_config as load_e11_config,
+            )
+            from longfeedback.experiments.e11_alfworld_credit import run_e11
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e11_alfworld_credit experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        if config_path is None:
+            raise typer.BadParameter("e11_alfworld_credit requires --config", param_hint="config")
+        result = run_e11(load_e11_config(config_path), output_dir=output_dir)
+    elif experiment_name in ("e12", "e12_alfworld_online"):
+        try:
+            from longfeedback.experiments.e12_alfworld_online import (
+                load_config as load_e12_config,
+            )
+            from longfeedback.experiments.e12_alfworld_online import run_e12
+        except ImportError as error:
+            raise typer.BadParameter(
+                "the e12_alfworld_online experiment needs the research extra; "
+                "install it with `uv sync --extra research`",
+                param_hint="name",
+            ) from error
+
+        if config_path is None:
+            raise typer.BadParameter("e12_alfworld_online requires --config", param_hint="config")
+        result = run_e12(load_e12_config(config_path), output_dir=output_dir)
     elif experiment_name == "multiseed":
         try:
             # multiseed itself is torch-free; importing gate_b checks that the
@@ -225,7 +258,8 @@ def run_experiment(
     else:
         raise typer.BadParameter(
             "unknown experiment; expected 'e0', 'e1', 'e5', 'e6', 'e8', 'e9', 'e9b', "
-            "'gate_a', 'gate_b', or 'multiseed'",
+            "'e11_alfworld_credit', 'e12_alfworld_online', 'gate_a', 'gate_b', "
+            "or 'multiseed'",
             param_hint="name",
         )
     typer.echo(json.dumps(result.metrics, indent=2, sort_keys=True))

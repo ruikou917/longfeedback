@@ -61,7 +61,15 @@ class CausalTransformerEncoder(nn.Module):
             enable_nested_tensor=False,
         )
 
-    def forward(self, tokens: Tensor) -> Tensor:
+    def forward(self, tokens: Tensor, padding_mask: Tensor | None = None) -> Tensor:
+        """Encode tokens; ``padding_mask`` marks padded positions with True.
+
+        Behavior with ``padding_mask=None`` is unchanged from the fixed-horizon
+        implementation. Because attention is causal and padding is always on
+        the right, outputs at real positions are identical either way; the
+        mask exists so variable-horizon callers can be explicit.
+        """
+
         if tokens.ndim != 3:
             raise ValueError(f"tokens must be [batch, length, features], got {tuple(tokens.shape)}")
         length = tokens.shape[1]
@@ -70,5 +78,15 @@ class CausalTransformerEncoder(nn.Module):
         positions = torch.arange(length, device=tokens.device)
         hidden = self.input_projection(tokens) + self.position_embedding(positions)
         causal_mask = nn.Transformer.generate_square_subsequent_mask(length, device=tokens.device)
-        encoded: Tensor = self.transformer(hidden, mask=causal_mask, is_causal=True)
-        return encoded
+        if padding_mask is None:
+            encoded: Tensor = self.transformer(hidden, mask=causal_mask, is_causal=True)
+            return encoded
+        if padding_mask.shape != tokens.shape[:2]:
+            raise ValueError("padding_mask must be [batch, length]")
+        boolean_causal = torch.triu(
+            torch.ones(length, length, dtype=torch.bool, device=tokens.device), diagonal=1
+        )
+        masked: Tensor = self.transformer(
+            hidden, mask=boolean_causal, src_key_padding_mask=padding_mask
+        )
+        return masked
